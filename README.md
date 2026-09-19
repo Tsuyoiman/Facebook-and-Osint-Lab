@@ -8,6 +8,80 @@ This repository contains a Facebook-style social application for an authorized c
 
 This project is not connected to Facebook, Meta, government systems, real companies, or real people's accounts.
 
+## Versioned Development History
+
+The project is documented as a sequence of development milestones. A version
+means the corresponding feature set was implemented in the repository; it
+does not mean that the future classroom network or Kali laboratory has been
+completed.
+
+### v1.0 - Social application foundation
+
+Implemented the Facebook-style application foundation:
+
+- Registration and login
+- Password hashing and JWT authentication
+- Home feed, posts, comments, and profile pages
+- Profile editing and image upload flows
+- Friends, followers, and following data structures
+- MongoDB persistence and Express routes
+
+### v1.1 - Fictional OSINT environment
+
+Added the controlled classroom simulation:
+
+- Ten fictional seeded accounts
+- Fictional public posts and profile metadata
+- Fictional organizations, projects, locations, and clue references
+- Interconnected public friend relationships
+- Public-safe search and profile API endpoints
+- Visible classroom simulation labeling
+
+### v1.2 - Local operations and safety
+
+Improved project operation and publication safety:
+
+- One-command root startup with `npm start`
+- Separate frontend and backend environment configuration
+- Ignored local secrets and generated dependencies
+- MongoDB seed command for the shared classroom dataset
+- Documentation for local and future LAN operation
+- Profile-picture upload error handling improvements
+
+### v1.3 - Relationship notifications
+
+Added Facebook-style relationship feedback:
+
+- Friend-request notifications
+- Follow notifications
+- Friend-request acceptance notifications
+- Live unread notification badge
+- Notification panel with read-on-open behavior
+- Confirm and Delete actions for incoming friend requests
+- Notification removal after a successful response
+- Authenticated notification API and MongoDB notification collection
+
+### Planned v2.0 - OSINT laboratory workflow
+
+Planned, not yet implemented:
+
+- Instructor target-selection workflow
+- Relationship and clue graph view
+- Evidence collection interface
+- Fact, inference, and unverified-information labels
+- Student OSINT report template or submission workflow
+
+### Planned v3.0 - Classroom network laboratory
+
+Planned, not yet implemented or tested:
+
+- Instructor-controlled lab server configuration
+- LAN and firewall validation
+- Multi-PC shared application testing
+- Authorized Kali connectivity testing
+- Approved port and service inventory
+- Combined OSINT and network reconnaissance report
+
 ## Purpose
 
 The lab demonstrates how separate pieces of public information can become more informative when collected and correlated. Students practice:
@@ -160,6 +234,9 @@ The current source code confirms these features:
 - Profile and cover pictures
 - Image cropping and Cloudinary upload integration
 - Friends, followers, and following relationships
+- Friend-request and follow notifications
+- Confirm/Delete actions for incoming friend requests
+- Live unread notification badge and read-on-open notification panel
 - Password reset flow
 - Fictional classroom simulation banner
 - Search by first name, last name, or username
@@ -180,6 +257,20 @@ GET /publicProfile/:username
 Public responses intentionally exclude passwords, password hashes, authentication tokens, private messages, and private database fields.
 
 Authentication, post, upload, profile, relationship, and reset routes remain available through the existing backend route modules.
+
+Authenticated notification routes are:
+
+```text
+GET    /notifications
+PUT    /notifications/read
+DELETE /notifications/:id
+```
+
+Friend requests create a `friend_request` notification for the recipient.
+Following creates a `follow` notification. Confirming a request creates a
+`friend_accepted` notification for the original sender. Opening the panel
+marks notifications read. Confirming or deleting a friend request removes
+that request notification after the action succeeds.
 
 ## OSINT Reconnaissance Laboratory
 
@@ -339,6 +430,9 @@ Confirmed during development:
 - Public profiles return posts and connections.
 - Public responses do not include password fields.
 - Frontend and backend run locally on ports `3000` and `8000`.
+- Friend-request, follow, and acceptance notifications work through the API.
+- Opening notifications clears the unread count.
+- Friend-request notification deletion works through the API.
 
 Still requires future classroom testing:
 
