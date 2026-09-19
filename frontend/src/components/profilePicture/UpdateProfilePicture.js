@@ -59,12 +59,15 @@ export default function UpdateProfilePicture({
       let img = await getCroppedImage();
       let blob = await fetch(img).then((b) => b.blob());
       const path = `${user.username}/profile_pictures`;
-      let formData = new formData();
+      const formData = new FormData();
       formData.append("file", blob);
       formData.append("path", path);
-      const res = await uploadImages(formData, path, user.token);
+      const uploadedImages = await uploadImages(formData, path, user.token);
+      if (!Array.isArray(uploadedImages) || !uploadedImages[0]?.url) {
+        throw new Error(uploadedImages || "Image upload failed.");
+      }
       const updated_picture = await updateprofilePicture(
-        res[0].url,
+        uploadedImages[0].url,
         user.token
       );
       console.log(updated_picture);
@@ -73,24 +76,24 @@ export default function UpdateProfilePicture({
           "profilePicture",
           null,
           description,
-          res,
+          uploadedImages,
           user.id,
           user.token
         );
         if (new_post === "ok") {
           setLoading(false);
           setImage("");
-          pRef.current.style.backgroundImage = `url(${res[0].url})`;
+          pRef.current.style.backgroundImage = `url(${uploadedImages[0].url})`;
           Cookies.set(
             "user",
             JSON.stringify({
               ...user,
-              picture: res[0].url,
+              picture: uploadedImages[0].url,
             })
           );
           dispatch({
             type: "UPDATEPICTURE",
-            payload: res[0].url,
+            payload: uploadedImages[0].url,
           });
           setShow(false);
         } else {
@@ -102,7 +105,7 @@ export default function UpdateProfilePicture({
       }
     } catch (error) {
       setLoading(false);
-      setError(error.response.data.error);
+      setError(error.response?.data?.message || error.message || "Image upload failed.");
     }
   };
   return (

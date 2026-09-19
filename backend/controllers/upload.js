@@ -39,19 +39,19 @@ exports.listImages = async (req, res) => {
 };
 
 const uploadToCloudinary = async (file, path) => {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     cloudinary.v2.uploader.upload(
       file.tempFilePath,
       {
         folder: path,
       },
-      (err, res) => {
+      (err, result) => {
         if (err) {
           removeTmp(file.tempFilePath);
-          return res.status(400).json({ message: "Image upload failed." });
+          return reject(new Error("Image upload failed."));
         }
         resolve({
-          url: res.secure_url,
+          url: result.secure_url,
         });
       }
     );
