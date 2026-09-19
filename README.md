@@ -76,20 +76,20 @@ git clone https://github.com/Tsuyoiman/Facebook-and-Osint-Lab.git
 cd Facebook-and-Osint-Lab
 ```
 
-Create private environment files from the published templates:
-
-```powershell
-Copy-Item backend/.env.example backend/.env
-Copy-Item frontend/.env.example frontend/.env
-```
-
-Edit `backend/.env`. At minimum, configure:
+Create private `backend/.env` and `frontend/.env` files locally. Do not commit
+them. Configure `backend/.env` with at least:
 
 ```env
 PORT=8000
 DATABASE_URL=mongodb+srv://USERNAME:PASSWORD@YOUR_CLUSTER.mongodb.net/facebook?retryWrites=true&w=majority
 TOKEN_SECRET=replace-with-a-private-random-secret
 BASE_URL=http://localhost:3000
+```
+
+Configure `frontend/.env` with:
+
+```env
+REACT_APP_BACKEND_URL=http://localhost:8000
 ```
 
 Keep real credentials out of GitHub. Do not commit `.env` files.
