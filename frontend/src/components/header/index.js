@@ -1,6 +1,8 @@
 import "./style.css";
 import { Link } from "react-router-dom";
 import { useState, useRef } from "react";
+import { useCallback, useEffect } from "react";
+import axios from "axios";
 import {
   ArrowDown,
   Messenger,
@@ -20,12 +22,15 @@ import SearchMenu from "./SearchMenu";
 import AllMenu from "./AllMenu";
 import useClickOutside from "../../helpers/clickOutside";
 import UserMenu from "./userMenu";
+import NotificationsMenu from "./NotificationsMenu";
 export default function Header({ page }) {
   const { user } = useSelector((user) => ({ ...user }));
   const color = "#65676b";
   const [showSearchMenu, setShowSearchMenu] = useState(false);
   const [showAllMenu, setShowAllMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
   const allmenu = useRef(null);
   const usermenu = useRef(null);
   useClickOutside(allmenu, () => {
@@ -34,6 +39,23 @@ export default function Header({ page }) {
   useClickOutside(usermenu, () => {
     setShowUserMenu(false);
   });
+  const refreshNotificationCount = useCallback(async () => {
+    try {
+      const { data } = await axios.get(
+        `${process.env.REACT_APP_BACKEND_URL}/notifications`,
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+      setNotificationCount(data.filter((notification) => !notification.read).length);
+    } catch (error) {
+      setNotificationCount(0);
+    }
+  }, [user.token]);
+  const handleNotificationsRead = useCallback(() => {
+    setNotificationCount(0);
+  }, []);
+  useEffect(() => {
+    refreshNotificationCount();
+  }, [refreshNotificationCount]);
   return (
     <header>
       <div className="header_left">
@@ -109,9 +131,18 @@ export default function Header({ page }) {
         <div className="circle_icon hover1">
           <Messenger />
         </div>
-        <div className="circle_icon hover1">
-          <Notifications />
-          <div className="right_notification">5</div>
+        <div className="circle_icon hover1 notification_button">
+          <div onClick={() => setShowNotifications((previous) => !previous)}>
+            <Notifications />
+            {notificationCount > 0 && (
+              <div className="right_notification">{notificationCount}</div>
+            )}
+          </div>
+          <NotificationsMenu
+            open={showNotifications}
+            onClose={() => setShowNotifications(false)}
+            onRead={handleNotificationsRead}
+          />
         </div>
         <div
           className={`circle_icon hover1 ${showUserMenu && "active_header"}`}

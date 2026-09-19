@@ -11,6 +11,7 @@ jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const { sendVerificationEmail, sendResetCode } = require("../helpers/mailer");
 const generateCode = require("../helpers/generateCode");
+const { createNotification } = require("../helpers/notifications");
 
 exports.register = async (req, res) => {
   try {
@@ -342,7 +343,7 @@ exports.getProfile = async (req, res) => {
       .populate("comments.commentBy", "first_name last_name username picture")
       .sort({ createdAt: -1 });
     await profile.populate("friends", "first_name last_name username picture");
-    res.json({ ...profile.toObject(), posts });
+    res.json({ ...profile.toObject(), posts, friendship });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -408,6 +409,7 @@ exports.addFriend = async (req, res) => {
         await sender.updateOne({
           $push: { following: receiver._id },
         });
+        await createNotification(receiver._id, sender._id, "friend_request");
         res.json({ message: "Friend request has been sent" });
       } else {
         return res.status(400).json({ message: "Friend request already sent" });
@@ -468,6 +470,7 @@ exports.follow = async (req, res) => {
         await sender.updateOne({
           $push: { following: receiver._id },
         });
+        await createNotification(receiver._id, sender._id, "follow");
         res.json({ message: "Follow success" });
       } else {
         return res.status(400).json({ message: "Already following" });
@@ -525,6 +528,7 @@ exports.acceptRequest = async (req, res) => {
         await receiver.updateOne({
           $pull: { requests: sender._id },
         });
+        await createNotification(sender._id, receiver._id, "friend_accepted");
         res.json({ message: "friend request accepted" });
       } else {
         return res.status(400).json({ message: "Already friends" });

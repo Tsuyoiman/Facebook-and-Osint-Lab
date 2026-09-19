@@ -46,19 +46,13 @@ export default function Profile({ setVisible }) {
         type: "PROFILE_REQUEST",
       });
       const { data } = await axios.get(
-        `${process.env.REACT_APP_BACKEND_URL}/${visitor ? "publicProfile" : "getProfile"}/${userName}`,
-        visitor
-          ? undefined
-          : { headers: { Authorization: `Bearer ${user.token}` } }
+        `${process.env.REACT_APP_BACKEND_URL}/getProfile/${userName}`,
+        { headers: { Authorization: `Bearer ${user.token}` } }
       );
       if (data.ok === false) {
         navigate("/profile");
       } else {
         try {
-          if (visitor) {
-            dispatch({ type: "PROFILE_SUCCESS", payload: data });
-            return;
-          }
           const images = await axios.post(
             `${process.env.REACT_APP_BACKEND_URL}/listImages`,
             { path, sort, max },
