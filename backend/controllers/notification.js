@@ -24,3 +24,15 @@ exports.markNotificationsRead = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+exports.deleteNotification = async (req, res) => {
+  try {
+    await Notification.deleteOne({
+      _id: req.params.id,
+      recipient: req.user.id,
+    });
+    res.json({ message: "Notification removed" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

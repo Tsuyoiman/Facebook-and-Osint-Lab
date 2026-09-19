@@ -201,6 +201,19 @@ header {
   border-radius: 50%;
   object-fit: cover;
 }
+.notification_content {
+  flex: 1;
+  min-width: 0;
+}
+.notification_actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.notification_actions button {
+  padding: 6px 12px;
+  font-size: 12px;
+}
 .notifications_empty {
   padding: 22px 8px;
   color: var(--color-secondary);
