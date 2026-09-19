@@ -11,22 +11,27 @@ organization infrastructure.
 
 1. Copy `backend/.env.example` to `backend/.env` and add a MongoDB connection.
 2. Copy `frontend/.env.example` to `frontend/.env`.
-3. Install and run the backend:
+3. Install the root runner and project dependencies:
 
 	```powershell
+	npm install
 	cd backend
 	npm install
 	npm run seed:simulation
-	npm run server
-	```
-
-4. In another terminal, run the frontend:
-
-	```powershell
+	cd ..
 	cd frontend
 	npm install
+	```
+
+4. From the project root, start both services in one terminal:
+
+	```powershell
+	cd ..
 	npm start
 	```
+
+The root `npm start` command runs the backend on port `8000` and the frontend
+on port `3000`. Stop both services with `Ctrl+C`.
 
 The seeded classroom accounts use the password `ClassroomLab123!`. Search is
 available from the header and public profiles contain only fictional public
