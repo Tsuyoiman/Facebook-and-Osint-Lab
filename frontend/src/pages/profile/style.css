@@ -541,3 +541,40 @@
   display: grid;
   place-items: center;
 }
+.locked_profile_msg {
+  background: var(--bg-primary);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px var(--shadow-1);
+  padding: 20px;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.locked_icon_wrap {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.locked_icon_wrap i {
+  font-size: 24px;
+  color: var(--color-secondary);
+}
+.locked_text {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.locked_title {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--color-primary);
+}
+.locked_sub {
+  font-size: 14px;
+  color: var(--color-secondary);
+}

@@ -15,14 +15,14 @@ export default function ProfilePictureInfos({
       {show && <ProfilePicture setShow={setShow} pRef={pRef} photos={photos} />}
       <div className="profile_w_left">
         <div className="profile_w_img">
-          <div
-            className="profile_w_bg"
-            ref={pRef}
-            style={{
-              backgroundSize: "cover",
-              backgroundImage: `url(${profile.picture})`,
-            }}
-          ></div>
+<div
+  className="profile_w_bg"
+  ref={pRef}
+  style={{
+    backgroundSize: "cover",
+    backgroundImage: `url(${profile.picture || "/icons/profile.jpg"})`,
+  }}
+></div>
           {!visitor && (
             <div
               className="profile_circle hover1"
@@ -35,7 +35,7 @@ export default function ProfilePictureInfos({
         <div className="profile_w_col">
           <div className="profile_name">
             {profile.first_name} {profile.last_name}
-            <div className="othername">({othername && `${othername}`})</div>
+            <div className="othername">{othername ? `(${othername})` : ""}</div>
           </div>
           <div className="profile_friend_count">
             {profile?.friends && (

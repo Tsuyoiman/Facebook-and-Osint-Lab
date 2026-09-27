@@ -63,8 +63,9 @@ export default function Profile({ setVisible }) {
             }
           );
           setPhotos(images.data);
-        } catch (error) {
-          console.log(error);
+        } catch (imgError) {
+          console.log("Image list failed:", imgError);
+          setPhotos([]);
         }
         dispatch({
           type: "PROFILE_SUCCESS",
@@ -74,7 +75,7 @@ export default function Profile({ setVisible }) {
     } catch (error) {
       dispatch({
         type: "PROFILE_ERROR",
-        payload: error.response.data.message,
+        payload: error.response?.data?.message || "Error loading profile",
       });
     }
   };
@@ -83,12 +84,12 @@ export default function Profile({ setVisible }) {
   const [height, setHeight] = useState();
   const [leftHeight, setLeftHeight] = useState();
   const [scrollHeight, setScrollHeight] = useState();
-  useEffect(() => {
+useEffect(() => {
     setHeight(profileTop.current.clientHeight + 300);
     setLeftHeight(leftSide.current.clientHeight);
     window.addEventListener("scroll", getScroll, { passive: true });
     return () => {
-      window.addEventListener("scroll", getScroll, { passive: true });
+      window.removeEventListener("scroll", getScroll);
     };
   }, [loading, scrollHeight]);
   const check = useMediaQuery({
@@ -164,15 +165,32 @@ export default function Profile({ setVisible }) {
                 </div>
               </div>
               <div className="profile_right">
+                {profile?.profileLocked && visitor && (
+                  <div className="locked_profile_msg">
+                    <div className="locked_icon_wrap">
+                      <i className="lock_icon"></i>
+                    </div>
+                    <div className="locked_text">
+                      <span className="locked_title">
+                        {profile.first_name} {profile.last_name} locked their profile
+                      </span>
+                      <span className="locked_sub">
+                        Only friends can see their posts and profile information.
+                      </span>
+                    </div>
+                  </div>
+                )}
                 {!visitor && (
                   <CreatePost user={user} profile setVisible={setVisible} />
                 )}
                 <GridPosts />
                 <div className="posts">
-                  {profile.posts && profile.posts.length ? (
+                  {(!profile?.profileLocked || !visitor) && profile.posts && profile.posts.length ? (
                     profile?.posts.map((post) => (
                       <Post post={post} user={user} key={post._id} profile />
                     ))
+                  ) : profile?.profileLocked && visitor ? (
+                    <div className="no_posts">Posts are hidden when profile is locked.</div>
                   ) : (
                     <div className="no_posts">No posts available</div>
                   )}

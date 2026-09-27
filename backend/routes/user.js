@@ -22,6 +22,8 @@ const {
   deleteRequest,
   searchPublicUsers,
   getPublicProfile,
+  toggleProfileLock,
+  toggleDarkMode,
 } = require("../controllers/user");
 const { authUser } = require("../middlewares/auth");
 
@@ -48,5 +50,7 @@ router.put("/unfollow/:id", authUser, unfollow);
 router.put("/acceptRequest/:id", authUser, acceptRequest);
 router.put("/unfriend/:id", authUser, unfriend);
 router.put("/deleteRequest/:id", authUser, deleteRequest);
+router.put("/toggleProfileLock", authUser, toggleProfileLock);
+router.put("/toggleDarkMode", authUser, toggleDarkMode);
 
 module.exports = router;

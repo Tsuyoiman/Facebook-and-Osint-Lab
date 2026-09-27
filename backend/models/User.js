@@ -150,6 +150,14 @@ const userSchema = mongoose.Schema(
         },
       },
     ],
+    profileLocked: {
+      type: Boolean,
+      default: false,
+    },
+    darkMode: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

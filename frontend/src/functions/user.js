@@ -153,3 +153,35 @@ export const deleteRequest = async (id, token) => {
     return error.response.data.message;
   }
 };
+export const toggleDarkMode = async (darkMode, token) => {
+  try {
+    const { data } = await axios.put(
+      `${process.env.REACT_APP_BACKEND_URL}/toggleDarkMode`,
+      { darkMode },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return data.darkMode;
+  } catch (error) {
+    return error.response.data.message;
+  }
+};
+export const toggleProfileLock = async (locked, token) => {
+  try {
+    const { data } = await axios.put(
+      `${process.env.REACT_APP_BACKEND_URL}/toggleProfileLock`,
+      { locked },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return data.profileLocked;
+  } catch (error) {
+    return error.response.data.message;
+  }
+};

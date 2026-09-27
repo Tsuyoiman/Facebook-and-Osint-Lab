@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import Picker from "emoji-picker-react";
 import { useMediaQuery } from "react-responsive";
-export default function EmojiPickerBackgrounds({
+export default function EmojiPickerBackground({
   text,
   user,
   setText,
   type2,
   background,
-  setBackground,
+  setBg,
 }) {
   const [picker, setPicker] = useState(false);
   const [showBgs, setShowBgs] = useState(false);

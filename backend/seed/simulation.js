@@ -4,7 +4,7 @@ const bcrypt = require("bcrypt");
 const User = require("../models/User");
 const Post = require("../models/Post");
 
-const password = "ClassroomLab123!";
+const password = "C1sc0123";
 
 const profiles = [
   {
@@ -107,7 +107,88 @@ const profiles = [
     simulation: { occupation: "Sports program organizer", education: "Porto Verde Polytechnic", location: "Northline", organizations: ["Bayanihan Sports Circle", "Bright Steps Learning Hub"], clues: ["equipment donation", "student sports clinic"], exposureLevel: "high" },
     post: "Bayanihan Sports Circle donated fictional equipment to the Bright Steps student sports clinic.",
   },
+    {
+    first_name: "Zendaya",
+    last_name: "Coleman",
+    bYear: 1996, bMonth: 9, bDay: 1,
+    username: "zendaya",
+    gender: "female",
+    details: { bio: "Award-winning actress and style icon.", job: "Actress", workplace: "Hollywood Studios", college: "Oak Park High School", currentCity: "Los Angeles", hometown: "Oak Park" },
+    simulation: { occupation: "Actress", education: "Oak Park High School", location: "Los Angeles", organizations: ["Hollywood Studios"], clues: ["Emmy winner", "Spider-Man co-star"], exposureLevel: "high" },
+    post: "So grateful for this incredible journey and the amazing people I get to work with every day.",
+  },
+  {
+    first_name: "Margot",
+    last_name: "Robbie",
+    bYear: 1990, bMonth: 7, bDay: 2,
+    username: "margot_robbie",
+    gender: "female",
+    details: { bio: "Producer and actress known for iconic roles.", job: "Actress/Producer", workplace: "LuckyChap Entertainment", college: "Somerville House", currentCity: "Los Angeles", hometown: "Gold Coast" },
+    simulation: { occupation: "Actress/Producer", education: "Somerville House", location: "Los Angeles", organizations: ["LuckyChap Entertainment"], clues: ["Barbie producer", "Wolf of Wall Street"], exposureLevel: "high" },
+    post: "Excited about what we're building at LuckyChap — storytelling that pushes boundaries.",
+  },
+  {
+    first_name: "Ana",
+    last_name: "de Armas",
+    bYear: 1988, bMonth: 4, bDay: 30,
+    username: "ana_de_armas",
+    gender: "female",
+    details: { bio: "Cuban-Spanish actress breaking barriers in Hollywood.", job: "Actress", workplace: "Film Studios", college: "National Theater School", currentCity: "Madrid", hometown: "Cuba" },
+    simulation: { occupation: "Actress", education: "National Theater School", location: "Madrid", organizations: ["Film Studios"], clues: ["Blonde", "Knives Out"], exposureLevel: "medium" },
+    post: "Playing Marilyn Monroe was one of the most challenging and rewarding experiences of my career.",
+  },
+  {
+    first_name: "Jenna",
+    last_name: "Ortega",
+    bYear: 2002, bMonth: 9, bDay: 27,
+    username: "jenna_ortega",
+    gender: "female",
+    details: { bio: "Rising star of horror and comedy.", job: "Actress", workplace: "Netflix Studios", college: "Home School", currentCity: "Los Angeles", hometown: "Palm Springs" },
+    simulation: { occupation: "Actress", education: "Home School", location: "Los Angeles", organizations: ["Netflix Studios"], clues: ["Wednesday", "Scream"], exposureLevel: "high" },
+    post: "Wednesday has changed my life — the response has been absolutely wild.",
+  },
+  {
+    first_name: "Florence",
+    last_name: "Pugh",
+    bYear: 1996, bMonth: 1, bDay: 3,
+    username: "florence_pugh",
+    gender: "female",
+    details: { bio: "Critically acclaimed actress known for bold roles.", job: "Actress", workplace: "Film Studios", college: "Oxford School of Drama", currentCity: "London", hometown: "Oxford" },
+    simulation: { occupation: "Actress", education: "Oxford School of Drama", location: "London", organizations: ["Film Studios"], clues: ["Little Women", "Black Widow", "Dune"], exposureLevel: "high" },
+    post: "Every role teaches me something new — I'm constantly growing as an actor.",
+  },
+  {
+    first_name: "Sydney",
+    last_name: "Sweeney",
+    bYear: 1997, bMonth: 9, bDay: 12,
+    username: "sydney_sweeney",
+    gender: "female",
+    details: { bio: "Actress and producer rising to fame through TV.", job: "Actress/Producer", workplace: "Hollywood Studios", college: "Home School", currentCity: "Los Angeles", hometown: "Spokane" },
+    simulation: { occupation: "Actress/Producer", education: "Home School", location: "Los Angeles", organizations: ["Hollywood Studios"], clues: ["Euphoria", "The White Lotus"], exposureLevel: "high" },
+    post: "Euphoria has been the most transformative experience — I've learned so much.",
+  },
+  {
+    first_name: "Scarlett",
+    last_name: "Johansson",
+    bYear: 1984, bMonth: 11, bDay: 22,
+    username: "scarlett_johansson",
+    gender: "female",
+    details: { bio: "One of the highest-paid actresses in the world.", job: "Actress", workplace: "Marvel Studios", college: "Professional Children's School", currentCity: "New York", hometown: "Manhattan" },
+    simulation: { occupation: "Actress", education: "Professional Children's School", location: "New York", organizations: ["Marvel Studios"], clues: ["Black Widow", "Lost in Translation", "Lucy"], exposureLevel: "high" },
+    post: "Playing Black Widow was an incredible journey — I'm proud of what we built.",
+  },
+  {
+    first_name: "Megan",
+    last_name: "Fox",
+    bYear: 1986, bMonth: 5, bDay: 16,
+    username: "megan_fox",
+    gender: "female",
+    details: { bio: "Actress and model known for action roles.", job: "Actress/Model", workplace: "Film Studios", college: "Home School", currentCity: "Los Angeles", hometown: "Tennessee" },
+    simulation: { occupation: "Actress/Model", education: "Home School", location: "Los Angeles", organizations: ["Film Studios"], clues: ["Transformers", "Jennifer's Body"], exposureLevel: "medium" },
+    post: "Still learning and growing — every project brings something new.",
+  },
 ];
+
 
 async function seed() {
   await mongoose.connect(process.env.DATABASE_URL);
@@ -119,9 +200,11 @@ async function seed() {
 
   const users = await User.insertMany(profiles.map(({ post, ...profile }) => ({
     ...profile,
-    email: `${profile.username}@classroom.invalid`,
+    email: `${profile.username}@rivantech.com`,
     password: passwordHash,
     verified: true,
+    picture: `/images/${profile.username}.jpg`,
+    cover: `/images/${profile.username}_cover.jpg`,
     friends: [],
     following: [],
     followers: [],
@@ -132,6 +215,19 @@ async function seed() {
     ["marty_romualdo", "zed_co"], ["zed_co", "waldo_bayola"], ["waldo_bayola", "bingo_revilla"],
     ["bingo_revilla", "robby_padilla"], ["robby_padilla", "bitag_tulfo"], ["bitag_tulfo", "sarah_duterre"],
     ["sarah_duterre", "manuel_pacquiao"], ["manuel_pacquiao", "jp_enrile"], ["jp_enrile", "jing_estrada"],
+    ["jing_estrada", "marty_romualdo"], ["zed_co", "marty_romualdo"], ["waldo_bayola", "zed_co"],
+    ["bingo_revilla", "waldo_bayola"], ["robby_padilla", "bingo_revilla"], ["bitag_tulfo", "robby_padilla"],
+    ["sarah_duterre", "bitag_tulfo"], ["manuel_pacquiao", "sarah_duterre"], ["jp_enrile", "manuel_pacquiao"],
+    ["jing_estrada", "jp_enrile"], ["marty_romualdo", "jing_estrada"],
+    // Connect celebrity users to the classroom network
+    ["marty_romualdo", "zendaya"], ["zed_co", "margot_robbie"], ["waldo_bayola", "ana_de_armas"],
+    ["bingo_revilla", "jenna_ortega"], ["robby_padilla", "florence_pugh"], ["bitag_tulfo", "sydney_sweeney"],
+    ["sarah_duterre", "scarlett_johansson"], ["manuel_pacquiao", "megan_fox"],
+    // Chain celebrities together
+    ["zendaya", "margot_robbie"], ["margot_robbie", "ana_de_armas"],
+    ["ana_de_armas", "jenna_ortega"], ["jenna_ortega", "florence_pugh"],
+    ["florence_pugh", "sydney_sweeney"], ["sydney_sweeney", "scarlett_johansson"],
+    ["scarlett_johansson", "megan_fox"],
   ];
   for (const [left, right] of links) {
     await User.updateOne({ _id: byUsername[left]._id }, { $addToSet: { friends: byUsername[right]._id } });

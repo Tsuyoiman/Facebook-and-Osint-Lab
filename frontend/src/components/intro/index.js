@@ -20,7 +20,7 @@ export default function Intro({ detailss, simulation, visitor, setOthername }) {
     workplace: details?.workplace ? details.workplace : "",
     highSchool: details?.highSchool ? details.highSchool : "",
     college: details?.college ? details.college : "",
-    currentCity: details?.currentCity ? details.bcurrentCityio : "",
+    currentCity: details?.currentCity ? details.currentCity : "",
     hometown: details?.hometown ? details.hometown : "",
     relationship: details?.relationship ? details.relationship : "",
     instagram: details?.instagram ? details.instagram : "",

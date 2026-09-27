@@ -13,6 +13,10 @@ export function userReducer(
       return { ...state, picture: action.payload };
     case "VERIFY":
       return { ...state, verified: action.payload };
+    case "TOGGLEDARKMODE":
+      return { ...state, darkMode: action.payload };
+    case "TOGGLEPROFILELOCK":
+      return { ...state, profileLocked: action.payload };
 
     default:
       return state;

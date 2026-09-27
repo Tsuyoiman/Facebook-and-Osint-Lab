@@ -1,6 +1,18 @@
-import React from "react";
+import React, { useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { toggleDarkMode } from "../../../functions/user";
 
 export default function DisplayAccesibility({ setVisible }) {
+  const dispatch = useDispatch();
+  const { user } = useSelector((state) => ({ ...state }));
+  const [darkMode, setDarkMode] = useState(user?.darkMode || false);
+  const handleDarkMode = async (value) => {
+    const result = await toggleDarkMode(value, user.token);
+    if (result === true || result === false) {
+      setDarkMode(result);
+      dispatch({ type: "TOGGLEDARKMODE", payload: result });
+    }
+  };
   return (
     <div className="absolute_wrap">
       <div className="absolute_wrap_header">
@@ -12,7 +24,7 @@ export default function DisplayAccesibility({ setVisible }) {
         >
           <i className="arrow_back_icon"></i>
         </div>
-        Diplay & Accessibility
+        Display & Accessibility
       </div>
       <div className="mmenu_main">
         <div className="small_circle" style={{ width: "50px" }}>
@@ -21,18 +33,30 @@ export default function DisplayAccesibility({ setVisible }) {
         <div className="mmenu_col">
           <span className="mmenu_span1">Dark Mode</span>
           <span className="mmenu_span2">
-            Adjust the appearance of Facebook to refuce flare and give your eyes
+            Adjust the appearance of Facebook to reduce glare and give your eyes
             a break.
           </span>
         </div>
       </div>
       <label htmlFor="darkOff" className="hover1">
         <span>Off</span>
-        <input type="radio" name="dark" id="darkOff" />
+        <input
+          type="radio"
+          name="dark"
+          id="darkOff"
+          checked={darkMode === false}
+          onChange={() => handleDarkMode(false)}
+        />
       </label>
       <label htmlFor="darkON" className="hover1">
         <span>On</span>
-        <input type="radio" name="dark" id="darkON" />
+        <input
+          type="radio"
+          name="dark"
+          id="darkON"
+          checked={darkMode === true}
+          onChange={() => handleDarkMode(true)}
+        />
       </label>
       <div className="mmenu_main">
         <div className="small_circle">

@@ -22,40 +22,37 @@ function App() {
     posts: [],
     error: "",
   });
+
   useEffect(() => {
-    getAllPosts();
-  }, []);
+    if (user?.token) {
+      getAllPosts();
+    } else {
+      dispatch({ type: "POSTS_SUCCESS", payload: [] });
+    }
+  }, [user?.token]);
 
   const getAllPosts = async () => {
+    if (!user?.token) return;
     try {
-      dispatch({
-        type: "POSTS_REQUEST",
-      });
+      dispatch({ type: "POSTS_REQUEST" });
       const { data } = await axios.get(
         `${process.env.REACT_APP_BACKEND_URL}/getAllPosts`,
-        {
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${user.token}` } }
       );
-      dispatch({
-        type: "POSTS_SUCCESS",
-        payload: data,
-      });
+      dispatch({ type: "POSTS_SUCCESS", payload: data });
     } catch (error) {
       dispatch({
         type: "POSTS_ERROR",
-        payload: error.response.data.message,
+        payload: error.response?.data?.message || "Error loading posts",
       });
     }
   };
   return (
-    <div>
+    <div className={user?.darkMode ? "dark" : ""}>
       <div className="simulation_banner">
         CYBERSECURITY CLASSROOM SIMULATION - ALL PEOPLE, POSTS, COMPANIES, PROJECTS, AND EVENTS ARE FICTIONAL.
       </div>
-      {visible && <CreatePostPopup user={user} setVisible={setVisible} />}
+      {visible && <CreatePostPopup user={user} setVisible={setVisible} refreshPosts={getAllPosts} />}
       <Routes>
         <Route element={<LoggedInRoutes />}>
           <Route

@@ -107,22 +107,14 @@ export default function Post({ post, user, profile }) {
       </div>
       <div className="post_actions">
         <ReactsPopup visible={visible} setVisible={setVisible} />
-        <div
-          className="post_action hover1"
-          onMouseOver={() => {
-            setTimeout(() => {
-              setVisible(true);
-            }, 500);
-          }}
-          onMouseLeave={() => {
-            setTimeout(() => {
-              setVisible(false);
-            }, 500);
-          }}
-        >
-          <i className="like_icon"></i>
-          <span>Like</span>
-        </div>
+<div
+  className="post_action hover1"
+  onMouseEnter={() => setVisible(true)}
+  onMouseLeave={() => setVisible(false)}
+>
+  <i className="like_icon"></i>
+  <span>Like</span>
+</div>
         <div className="post_action hover1">
           <i className="comment_icon"></i>
           <span>Comment</span>

@@ -145,6 +145,8 @@ exports.login = async (req, res) => {
       last_name: user.last_name,
       token: token,
       verified: user.verified,
+      darkMode: user.darkMode || false,
+      profileLocked: user.profileLocked || false,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -247,15 +249,38 @@ exports.getPublicProfile = async (req, res) => {
       .lean();
     if (!profile) return res.status(404).json({ message: "Profile not found" });
 
-    const posts = await Post.find({ user: profile._id })
-      .select("text images background type createdAt comments user")
-      .populate("user", publicUserFields)
-      .populate("comments.commentBy", "first_name last_name username picture")
-      .sort({ createdAt: -1 })
-      .limit(30)
-      .lean();
+    const isLocked = profile.profileLocked === true;
+    let isFriend = false;
+    if (req.user && req.user.id) {
+      const me = await User.findById(req.user.id).select("friends").lean();
+      isFriend = (me?.friends || []).some(
+        (f) => f.toString() === profile._id.toString()
+      );
+    }
+    const canViewPosts = !isLocked || isFriend;
+    let posts = [];
+    if (canViewPosts) {
+      posts = await Post.find({ user: profile._id })
+        .select("text images background type createdAt comments user")
+        .populate("user", publicUserFields)
+        .populate("comments.commentBy", "first_name last_name username picture")
+        .sort({ createdAt: -1 })
+        .limit(30)
+        .lean();
+    }
 
-    res.json({ ...publicUser(profile), friends: profile.friends || [], posts: posts.map(publicPost) });
+    res.json({
+      ...publicUser(profile),
+      friends: profile.friends || [],
+      posts: posts.map(publicPost),
+      canViewPosts,
+      friendship: {
+        friends: isFriend,
+        following: false,
+        requestSent: false,
+        requestReceived: false,
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -338,12 +363,19 @@ exports.getProfile = async (req, res) => {
     if (profile.requests.includes(user._id)) {
       friendship.requestSent = true;
     }
-    const posts = await Post.find({ user: profile._id })
-      .populate("user", publicUserFields)
-      .populate("comments.commentBy", "first_name last_name username picture")
-      .sort({ createdAt: -1 });
+    const isLocked = profile.profileLocked === true;
+    const isFriend = friendship.friends;
+    const canViewPosts = !isLocked || isFriend || (user._id.toString() === profile._id.toString());
+
+    let posts = [];
+    if (canViewPosts) {
+      posts = await Post.find({ user: profile._id })
+        .populate("user", publicUserFields)
+        .populate("comments.commentBy", "first_name last_name username picture")
+        .sort({ createdAt: -1 });
+    }
     await profile.populate("friends", "first_name last_name username picture");
-    res.json({ ...profile.toObject(), posts, friendship });
+    res.json({ ...profile.toObject(), posts, friendship, canViewPosts });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -606,6 +638,34 @@ exports.deleteRequest = async (req, res) => {
         .status(400)
         .json({ message: "You can't delete a friend request from yourself" });
     }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.toggleProfileLock = async (req, res) => {
+  try {
+    const { locked } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { profileLocked: locked },
+      { new: true }
+    );
+    res.json({ profileLocked: user.profileLocked });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.toggleDarkMode = async (req, res) => {
+  try {
+    const { darkMode } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { darkMode: darkMode },
+      { new: true }
+    );
+    res.json({ darkMode: user.darkMode });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
