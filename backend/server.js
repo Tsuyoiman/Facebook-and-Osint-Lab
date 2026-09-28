@@ -3,7 +3,11 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const fileUpload = require("express-fileupload");
 const dotenv = require("dotenv");
-dotenv.config();
+const path = require("path");
+dotenv.config({ path: path.join(__dirname, ".env") });
+if (!process.env.TOKEN_SECRET) {
+  dotenv.config({ path: path.join(__dirname, "..", "envBackend.env") });
+}
 const { readdirSync } = require("fs");
 
 const app = express();

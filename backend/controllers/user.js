@@ -8,7 +8,7 @@ const User = require("../models/User");
 const Code = require("../models/Code");
 const Post = require("../models/Post");
 const jwt = require("jsonwebtoken");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const { sendVerificationEmail, sendResetCode } = require("../helpers/mailer");
 const generateCode = require("../helpers/generateCode");
 const { createNotification } = require("../helpers/notifications");
@@ -243,8 +243,25 @@ exports.searchPublicUsers = async (req, res) => {
     if (query.length < 2) return res.json([]);
     const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const pattern = new RegExp(escaped, "i");
+    const emailPattern = new RegExp(`^${escaped}$`, "i");
     const users = await User.find({
-      $or: [{ first_name: pattern }, { last_name: pattern }, { username: pattern }],
+      $or: [
+        { first_name: pattern },
+        { last_name: pattern },
+        { username: pattern },
+        {
+          $expr: {
+            $regexMatch: {
+              input: { $concat: ["$first_name", " ", "$last_name"] },
+              regex: escaped,
+              options: "i",
+            },
+          },
+        },
+        // Email is accepted only as an exact lookup key. It is not included
+        // in the public response, which still contains only public fields.
+        { email: emailPattern },
+      ],
     })
       .select(publicUserFields)
       .limit(10)
@@ -500,14 +517,30 @@ exports.updateCover = async (req, res) => {
 exports.updateDetails = async (req, res) => {
   try {
     const { infos } = req.body;
+    if (!infos || typeof infos !== "object" || Array.isArray(infos)) {
+      return res.status(400).json({ message: "Invalid profile details." });
+    }
+
+    // Do not replace the whole subdocument: the bio form submits the other
+    // fields too, and an empty relationship value is not a valid enum value.
+    const details = { ...infos };
+    if (!details.relationship) delete details.relationship;
+    if (details.hobbies !== undefined) {
+      details.hobbies = Array.isArray(details.hobbies)
+        ? details.hobbies.map((hobby) => String(hobby).trim()).filter(Boolean)
+        : [];
+    }
 
     const updated = await User.findByIdAndUpdate(
       req.user.id,
       {
-        details: infos,
+        $set: Object.fromEntries(
+          Object.entries(details).map(([key, value]) => [`details.${key}`, value])
+        ),
       },
       {
         new: true,
+        runValidators: true,
       }
     );
     res.json(updated.details);

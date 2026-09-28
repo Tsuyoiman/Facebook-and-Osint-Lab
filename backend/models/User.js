@@ -129,6 +129,10 @@ const userSchema = mongoose.Schema(
       instagram: {
         type: String,
       },
+      hobbies: {
+        type: [String],
+        default: [],
+      },
     },
     simulation: {
       occupation: String,

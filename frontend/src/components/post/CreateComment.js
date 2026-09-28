@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import Picker from "emoji-picker-react";
-export default function CreateComment({ user }) {
+import { addComment } from "../../functions/post";
+
+export default function CreateComment({ user, postId, onCommentCreated }) {
   const [picker, setPicker] = useState(false);
   const [text, setText] = useState("");
   const [error, setError] = useState("");
@@ -41,6 +43,22 @@ export default function CreateComment({ user }) {
       setCommentImage(event.target.result);
     };
   };
+  const submitComment = async () => {
+    if (!text.trim() && !commentImage) return;
+    try {
+      const response = await addComment(
+        postId,
+        text,
+        commentImage,
+        user.token
+      );
+      onCommentCreated?.(response.commentsCount);
+      setText("");
+      setCommentImage("");
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || "Could not add comment.");
+    }
+  };
   return (
     <div className="create_comment_wrap">
       <div className="create_comment">
@@ -72,6 +90,12 @@ export default function CreateComment({ user }) {
             value={text}
             placeholder="Write a comment"
             onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                submitComment();
+              }
+            }}
           />
           <div
             className="comment_circle_icon hover2"

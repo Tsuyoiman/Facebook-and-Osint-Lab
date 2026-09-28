@@ -4,7 +4,6 @@ const os = require("os");
 const path = require("path");
 
 const ROOT = path.join(__dirname, "..");
-const FRONTEND_DIR = path.join(ROOT, "frontend");
 const NPM = process.platform === "win32" ? "npm.cmd" : "npm";
 
 const isPortFree = (port) =>
@@ -126,8 +125,8 @@ const main = async () => {
   const frontend = start(
     "frontend",
     NPM,
-    ["start"],
-    FRONTEND_DIR,
+    ["run", "start", "--workspace", "frontend"],
+    ROOT,
     {
       PORT: String(frontendPort),
       HOST: "0.0.0.0",

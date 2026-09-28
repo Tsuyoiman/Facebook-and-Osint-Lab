@@ -9,6 +9,7 @@ import PostMenu from "./PostMenu";
 export default function Post({ post, user, profile }) {
   const [visible, setVisible] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [commentsCount, setCommentsCount] = useState(post.comments?.length || 0);
 
   return (
     <div className="post" style={{ width: `${profile && "100%"}` }}>
@@ -101,8 +102,10 @@ export default function Post({ post, user, profile }) {
           <div className="reacts_count_num"></div>
         </div>
         <div className="to_right">
-          <div className="comments_count">13 Comments</div>
-          <div className="share_count">1 Share</div>
+          <div className="comments_count">
+            {commentsCount} {commentsCount === 1 ? "Comment" : "Comments"}
+          </div>
+          <div className="share_count">Share</div>
         </div>
       </div>
       <div className="post_actions">
@@ -126,7 +129,11 @@ export default function Post({ post, user, profile }) {
       </div>
       <div className="comments_wrap">
         <div className="comments_order"></div>
-        <CreateComment user={user} />
+        <CreateComment
+          user={user}
+          postId={post._id}
+          onCommentCreated={setCommentsCount}
+        />
       </div>
       {showMenu && (
         <PostMenu

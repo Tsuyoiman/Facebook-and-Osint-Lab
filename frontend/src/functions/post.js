@@ -12,3 +12,12 @@ export const createPost = async (type, background, text, images, user, token) =>
     return error.response?.data?.message || "Error creating post";
   }
 };
+
+export const addComment = async (postId, comment, image, token) => {
+  const { data } = await axios.post(
+    `${process.env.REACT_APP_BACKEND_URL}/posts/${postId}/comments`,
+    { comment, image },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return data;
+};

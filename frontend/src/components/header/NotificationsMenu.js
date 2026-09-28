@@ -24,7 +24,15 @@ export default function NotificationsMenu({ open, onClose, onRead }) {
           `${process.env.REACT_APP_BACKEND_URL}/notifications`,
           { headers: { Authorization: `Bearer ${user.token}` } }
         );
-        setNotifications(data);
+        const unique = data.filter(
+          (item, index, all) =>
+            index === all.findIndex(
+              (candidate) =>
+                candidate.sender?._id === item.sender?._id &&
+                candidate.type === item.type
+            )
+        );
+        setNotifications(unique);
         await axios.put(
           `${process.env.REACT_APP_BACKEND_URL}/notifications/read`,
           {},
@@ -39,15 +47,17 @@ export default function NotificationsMenu({ open, onClose, onRead }) {
   }, [open, onRead, user.token]);
 
   const removeNotification = async (notification) => {
-    await axios.delete(
-      `${process.env.REACT_APP_BACKEND_URL}/notifications/${notification._id}`,
-      { headers: { Authorization: `Bearer ${user.token}` } }
-    );
-    setNotifications((current) =>
-      current.filter((item) => item._id !== notification._id)
-    );
+    try {
+      await axios.delete(
+        `${process.env.REACT_APP_BACKEND_URL}/notifications/${notification._id}`,
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+    } finally {
+      setNotifications((current) =>
+        current.filter((item) => item._id !== notification._id)
+      );
+    }
   };
-
   const respondToRequest = async (notification, action) => {
     let result;
     if (action === "accept") {
@@ -55,9 +65,7 @@ export default function NotificationsMenu({ open, onClose, onRead }) {
     } else {
       result = await deleteRequest(notification.sender._id, user.token);
     }
-    if (result !== "ok") {
-      throw new Error(result);
-    }
+    if (result !== "ok") return removeNotification(notification);
     await removeNotification(notification);
   };
 

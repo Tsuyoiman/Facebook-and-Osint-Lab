@@ -68,3 +68,28 @@ exports.getAllPosts = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
+exports.addComment = async (req, res) => {
+  try {
+    const commentText = req.body.comment?.trim() || "";
+    const commentImage = req.body.image || "";
+    if (!commentText && !commentImage) {
+      return res.status(400).json({ message: "Comment cannot be empty." });
+    }
+
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found." });
+    }
+
+    post.comments.push({
+      comment: commentText,
+      image: commentImage,
+      commentBy: req.user.id,
+    });
+    await post.save();
+    return res.status(201).json({ commentsCount: post.comments.length });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};

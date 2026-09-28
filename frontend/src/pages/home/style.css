@@ -219,3 +219,44 @@
   font-weight: 500;
 }
 /*-----Activate popup----*/
+
+/* Keep the feed centered while the fixed sidebars collapse around it. */
+.home {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 685px) minmax(0, 1fr);
+  column-gap: 24px;
+  padding: 0 20px 32px;
+}
+
+.home_middle {
+  position: relative;
+  left: auto;
+  transform: none;
+  grid-column: 2;
+  width: 100%;
+  max-width: 685px;
+  margin: 75px auto 0;
+  min-width: 0;
+}
+
+@media (max-width: 885px) {
+  .home {
+    display: block;
+    padding: 0 16px 32px;
+  }
+
+  .home_middle {
+    width: min(100%, 685px);
+    margin: 75px auto 0;
+  }
+}
+
+@media (max-width: 620px) {
+  .home {
+    padding: 0 8px 24px;
+  }
+
+  .home_middle {
+    width: 100%;
+    margin-top: 70px;
+  }
+}

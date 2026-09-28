@@ -27,13 +27,15 @@ export default function Intro({ detailss, simulation, visitor, setOthername }) {
   };
   const [infos, setInfos] = useState(initial);
   const [showBio, setShowBio] = useState(false);
+  const [showHobbies, setShowHobbies] = useState(false);
+  const [hobby, setHobby] = useState("");
   const [max, setMax] = useState(infos?.bio ? 100 - infos?.bio.length : 100);
-  const updateDetails = async () => {
+  const updateDetails = async (nextInfos = infos) => {
     try {
       const { data } = await axios.put(
         `${process.env.REACT_APP_BACKEND_URL}/updateDetails`,
         {
-          infos,
+          infos: nextInfos,
         },
         {
           headers: {
@@ -43,9 +45,10 @@ export default function Intro({ detailss, simulation, visitor, setOthername }) {
       );
       setShowBio(false);
       setDetails(data);
+      setInfos((current) => ({ ...current, ...data }));
       setOthername(data.otherName);
     } catch (error) {
-      console.log(error.response.data.message);
+      console.log(error.response?.data?.message || error.message);
     }
   };
   const handleChange = (e) => {
@@ -177,11 +180,51 @@ export default function Intro({ detailss, simulation, visitor, setOthername }) {
           setVisible={setVisible}
         />
       )}
+      {details?.hobbies?.map((item) => (
+        <div className="info_profile" key={item}>
+          <img src="../../../icons/public.png" alt="" />
+          Hobby: <b>{item}</b>
+        </div>
+      ))}
       {!visitor && (
-        <button className="gray_btn hover1 w100">Add Hobbies</button>
-      )}
-      {!visitor && (
-        <button className="gray_btn hover1 w100">Add Featured</button>
+        <>
+          {!showHobbies ? (
+            <button
+              className="gray_btn hover1 w100"
+              onClick={() => setShowHobbies(true)}
+            >
+              Add Hobbies
+            </button>
+          ) : (
+            <div className="add_bio_wrap">
+              <input
+                className="textarea_blue details_input"
+                placeholder="Add a hobby"
+                value={hobby}
+                onChange={(event) => setHobby(event.target.value)}
+                maxLength={40}
+              />
+              <div className="flex flex_right">
+                <button className="gray_btn" onClick={() => setShowHobbies(false)}>
+                  Cancel
+                </button>
+                <button
+                  className="blue_btn"
+                  onClick={async () => {
+                    const value = hobby.trim();
+                    if (!value) return;
+                    const nextHobbies = [...(details?.hobbies || []), value];
+                    await updateDetails({ hobbies: nextHobbies });
+                    setHobby("");
+                    setShowHobbies(false);
+                  }}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

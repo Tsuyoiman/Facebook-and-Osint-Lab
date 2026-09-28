@@ -16,21 +16,45 @@ export default function CreatePost({ user, setVisible, profile }) {
       </div>
       <div className="create_splitter"></div>
       <div className="createPost_body">
-        <div className="createPost_icon hover1">
+        <div
+          className="createPost_icon hover1"
+          role="button"
+          tabIndex={0}
+          onClick={() => setVisible(true)}
+          onKeyDown={(event) => event.key === "Enter" && setVisible(true)}
+        >
           <LiveVideo color="#f3425f" />
           Live Video
         </div>
-        <div className="createPost_icon hover1">
+        <div
+          className="createPost_icon hover1"
+          role="button"
+          tabIndex={0}
+          onClick={() => setVisible(true)}
+          onKeyDown={(event) => event.key === "Enter" && setVisible(true)}
+        >
           <Photo color="#4bbf67" />
           Photo/ Video
         </div>
         {profile ? (
-          <div className="createPost_icon hover1">
+          <div
+            className="createPost_icon hover1"
+            role="button"
+            tabIndex={0}
+            onClick={() => setVisible(true)}
+            onKeyDown={(event) => event.key === "Enter" && setVisible(true)}
+          >
             <i className="lifeEvent_icon"></i>
             Life Event
           </div>
         ) : (
-          <div className="createPost_icon hover1">
+          <div
+            className="createPost_icon hover1"
+            role="button"
+            tabIndex={0}
+            onClick={() => setVisible(true)}
+            onKeyDown={(event) => event.key === "Enter" && setVisible(true)}
+          >
             <Feeling color="#f7b928" />
             Feeling/Activity
           </div>

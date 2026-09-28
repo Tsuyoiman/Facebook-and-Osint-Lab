@@ -1,4 +1,5 @@
 const Notification = require("../models/Notification");
+const mongoose = require("mongoose");
 
 exports.getNotifications = async (req, res) => {
   try {
@@ -27,6 +28,9 @@ exports.markNotificationsRead = async (req, res) => {
 
 exports.deleteNotification = async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: "Invalid notification." });
+    }
     await Notification.deleteOne({
       _id: req.params.id,
       recipient: req.user.id,

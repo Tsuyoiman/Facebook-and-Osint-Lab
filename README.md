@@ -41,7 +41,7 @@ Added the controlled classroom simulation:
 
 Improved project operation and publication safety:
 
-- One-command root startup with `npm start`
+- One-command root startup with `npm run dev`
 - Separate frontend and backend environment configuration
 - Ignored local secrets and generated dependencies
 - MongoDB seed command for the shared classroom dataset
@@ -141,7 +141,8 @@ package.json          Root scripts for install and start
 ## Requirements
 
 - Node.js and npm
-- No local MongoDB required (an in-memory server starts automatically)
+- No separate MongoDB installation required (a persistent local database
+  starts automatically)
 - Optional Cloudinary credentials for image uploads
 - Optional email credentials for verification/reset email delivery
 
@@ -154,24 +155,42 @@ git clone https://github.com/Tsuyoiman/Facebook-and-Osint-Lab.git
 cd Facebook-and-Osint-Lab
 ```
 
-Install everything (root, backend, and frontend dependencies) and generate the
-local `.env` files in one command:
+Install the root, backend, and frontend dependencies from the repository root:
 
 ```powershell
-npm run install:all
+npm install
 ```
 
-That command:
+The root project uses npm workspaces, so one `npm install` installs every
+package. Add your local environment files manually when needed:
 
-- Installs dependencies for the root, `backend/`, and `frontend/`
-- Copies `backend/.env.example` to `backend/.env` if it does not already exist
-- Copies `frontend/.env.example` to `frontend/.env` if it does not already exist
-- Generates a random `TOKEN_SECRET` in `backend/.env`
+- `backend/.env` for database, authentication, email, and Cloudinary settings
+- `frontend/.env` for optional frontend overrides
 
-Running it again is safe: existing `.env` files and secrets are left untouched.
+The development launcher also accepts the root files `envBackend.env` and
+`envFrontend.env`, which are useful when keeping frontend and backend settings
+separate. Keep these files local and never commit them.
 
-No MongoDB installation is required. When `DATABASE_URL` is empty, the backend
-starts an in-memory MongoDB automatically.
+The committed `.env.example` files document the available settings. Never
+commit real credentials.
+
+No separate MongoDB installation is required for local classroom use. When
+`DATABASE_URL` is empty, the backend starts a local MongoDB process with its
+database files stored in the ignored project directory
+`.data/mongodb/`. Student registrations therefore survive stopping and
+restarting the server.
+
+If a configured `DATABASE_URL` cannot be reached, startup now stops with an
+explicit error instead of silently switching to a disposable database. This
+prevents students from registering accounts into a temporary database that
+would disappear when the server closes.
+
+If startup prints `Using MongoDB from DATABASE_URL` and then reports
+`querySrv ECONNREFUSED`, the local environment file still contains an
+unreachable remote MongoDB address. For a self-contained laptop classroom
+deployment, set `DATABASE_URL=` in `backend/.env` and keep a local
+`TOKEN_SECRET` in that same file. Restart `npm run dev`; it should then print
+`Persistent local MongoDB started at:` and store data under `.data/mongodb/`.
 
 ### Environment configuration
 
@@ -197,13 +216,13 @@ PORT=3000
 Keep real credentials out of GitHub. `.env` files are gitignored; only the
 `.env.example` templates are committed.
 
-To use a real MongoDB instead of the in-memory server, set
+To use a real MongoDB instead of the persistent local classroom database, set
 `DATABASE_URL=mongodb+srv://USER:PASSWORD@HOST/facebook` in `backend/.env`.
 The `CLOUD_*` values are only needed for image uploads.
 
 ## Seed the Fictional Dataset
 
-Seeding runs automatically on every `npm start`. To reseed manually with your
+Seeding runs automatically on every `npm run dev`. To reseed manually with your
 own `DATABASE_URL`:
 
 ```powershell
@@ -221,7 +240,7 @@ outside the lab.
 From the project root, start both services in one terminal:
 
 ```powershell
-npm start
+npm run dev
 ```
 
 The root command starts:
@@ -266,7 +285,7 @@ If the machine has several adapters, `scripts/start.js` ignores virtual ones
 
 ```powershell
 $env:BACKEND_URL_OVERRIDE = "http://192.168.1.3:8000"
-npm start
+npm run dev
 ```
 
 If a device cannot connect at all, Windows Defender is usually blocking inbound
@@ -279,7 +298,7 @@ Wi-Fi network may isolate clients from each other by design.
 git clone https://github.com/Tsuyoiman/Facebook-and-Osint-Lab.git
 cd Facebook-and-Osint-Lab
 npm run install:all
-npm start
+npm run dev
 ```
 
 Then open the printed frontend URL and log in with any seeded username using
@@ -440,30 +459,38 @@ Student PCs --> server frontend --> server backend --> MongoDB
 
 MongoDB should remain reachable only by the backend server. Student PCs and Kali should not connect directly to MongoDB.
 
-For a same-LAN test, configure the frontend to use the server's LAN address:
-
-```env
-REACT_APP_BACKEND_URL=http://SERVER_LAN_IP:8000
-```
-
-Start the frontend so it listens on the LAN interface:
+Run the root launcher so it binds the frontend and backend to the LAN
+interface, discovers the laptop's usable LAN address, and prints the exact
+URLs:
 
 ```powershell
-$env:HOST="0.0.0.0"
-npm start
+npm install
+npm run dev
 ```
 
-Students can then open:
+Students can then open the printed frontend URL:
 
 ```text
 http://SERVER_LAN_IP:3000
 ```
 
-The physical classroom network, firewall rules, final server IP, and multi-PC test results are **not confirmed from the current source code**.
+The OSINTPROJECT repository is the companion Kali investigation client. Kali
+uses the printed API URL, normally port `8000`, while Firefox uses the
+frontend URL, normally port `3000`:
 
-## Future Kali Linux Laboratory
+```text
+Firefox:    http://SERVER_LAN_IP:3000
+OSINT API:  http://SERVER_LAN_IP:8000
+```
 
-The future Kali component is a separate, instructor-authorized network reconnaissance activity. It must target only the configured classroom server.
+Allow TCP ports `3000` and `8000` through the Windows firewall on the private
+classroom network. Student PCs and Kali must be on a network that permits
+device-to-device traffic.
+
+## Kali Linux OSINT Laboratory
+
+The Kali component is an instructor-authorized public-information workflow.
+It must target only this fictional classroom server.
 
 Planned workflow:
 
@@ -491,8 +518,6 @@ ping AUTHORIZED_TARGET_IP
 nmap -v AUTHORIZED_TARGET_IP
 ```
 
-The Kali laboratory is planned and has not been implemented or tested in this repository. No target IP, scan result, service inventory, or network claim is made here.
-
 The lab must not include password attacks, credential theft, account takeover, private-data access, exploitation, or scanning systems outside the authorized classroom environment.
 
 ## Development Stages
@@ -507,7 +532,9 @@ Partially implemented: ten fictional accounts, posts, organizations, projects, l
 
 ### Stage 3 - OSINT laboratory
 
-Partially implemented: search and public-profile investigation workflow. Planned: target selection, relationship graphs, evidence collection, and student report tooling.
+Implemented in the companion OSINTPROJECT repository: public search,
+profile investigation, friend/organization correlation, image analysis,
+authorized Nmap reconnaissance, evidence collection, and report generation.
 
 ### Stage 4 - Classroom network
 
@@ -515,7 +542,9 @@ Planned: server, switch, authorized LAN configuration, firewall rules, and multi
 
 ### Stage 5 - Kali Linux reconnaissance
 
-Planned: Kali setup, connectivity testing, approved port discovery, service identification, and evidence collection.
+Implemented in the companion OSINTPROJECT repository with an authorized
+network-range guard, connectivity testing, approved service discovery, and
+evidence collection.
 
 ### Stage 6 - Combined final laboratory
 

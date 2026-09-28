@@ -1,13 +1,20 @@
 {
   "name": "facebook-osint-lab",
   "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
   "scripts": {
     "install:all": "node scripts/setup.js",
     "setup": "node scripts/setup.js",
-    "start": "node scripts/start.js",
     "dev": "node scripts/start.js",
+    "start": "npm run dev",
     "all": "node scripts/start.js",
     "backend": "node backend/start.js",
     "frontend": "npm --prefix frontend start"
+  },
+  "dependencies": {
+    "mongodb": "^7.6.0"
   }
 }
