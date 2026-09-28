@@ -126,18 +126,22 @@ backend/
   routes/             API routes
   seed/               Fictional classroom dataset
   server.js           Express/MongoDB entry point
+  start.js            Boots MongoDB, seeds, then starts the API
 frontend/
   src/components/     Header, search, posts, login, profile UI
   src/pages/          Login, home, profile, reset pages
   src/functions/      Frontend API helpers
   src/routes/         Authenticated and unauthenticated route guards
-package.json          Starts frontend and backend together
+scripts/
+  setup.js            Installs all workspaces and creates .env files
+  start.js            Starts backend and frontend with live port detection
+package.json          Root scripts for install and start
 ```
 
 ## Requirements
 
 - Node.js and npm
-- MongoDB connection available to the backend
+- No local MongoDB required (an in-memory server starts automatically)
 - Optional Cloudinary credentials for image uploads
 - Optional email credentials for verification/reset email delivery
 
@@ -150,39 +154,57 @@ git clone https://github.com/Tsuyoiman/Facebook-and-Osint-Lab.git
 cd Facebook-and-Osint-Lab
 ```
 
-Create private `backend/.env` and `frontend/.env` files locally. Do not commit
-them. Configure `backend/.env` with at least:
+Install everything (root, backend, and frontend dependencies) and generate the
+local `.env` files in one command:
+
+```powershell
+npm run install:all
+```
+
+That command:
+
+- Installs dependencies for the root, `backend/`, and `frontend/`
+- Copies `backend/.env.example` to `backend/.env` if it does not already exist
+- Copies `frontend/.env.example` to `frontend/.env` if it does not already exist
+- Generates a random `TOKEN_SECRET` in `backend/.env`
+
+Running it again is safe: existing `.env` files and secrets are left untouched.
+
+No MongoDB installation is required. When `DATABASE_URL` is empty, the backend
+starts an in-memory MongoDB automatically.
+
+### Environment configuration
+
+`backend/.env`:
 
 ```env
 PORT=8000
-DATABASE_URL=mongodb+srv://USERNAME:PASSWORD@YOUR_CLUSTER.mongodb.net/facebook?retryWrites=true&w=majority
-TOKEN_SECRET=replace-with-a-private-random-secret
+DATABASE_URL=
+TOKEN_SECRET=generated-for-you
 BASE_URL=http://localhost:3000
+CLOUD_NAME=
+CLOUD_API_KEY=
+CLOUD_API_SECRET=
 ```
 
-Configure `frontend/.env` with:
+`frontend/.env`:
 
 ```env
 REACT_APP_BACKEND_URL=http://localhost:8000
+PORT=3000
 ```
 
-Keep real credentials out of GitHub. Do not commit `.env` files.
+Keep real credentials out of GitHub. `.env` files are gitignored; only the
+`.env.example` templates are committed.
 
-Install dependencies:
-
-```powershell
-npm install
-cd backend
-npm install
-cd ..
-cd frontend
-npm install
-cd ..
-```
+To use a real MongoDB instead of the in-memory server, set
+`DATABASE_URL=mongodb+srv://USER:PASSWORD@HOST/facebook` in `backend/.env`.
+The `CLOUD_*` values are only needed for image uploads.
 
 ## Seed the Fictional Dataset
 
-The seed script creates ten fictional classroom users, fictional public posts, simulation metadata, and interconnected friend relationships:
+Seeding runs automatically on every `npm start`. To reseed manually with your
+own `DATABASE_URL`:
 
 ```powershell
 cd backend
@@ -190,7 +212,9 @@ npm run seed:simulation
 cd ..
 ```
 
-The seeded classroom accounts use the shared demonstration password `ClassroomLab123!`. Students should create separate accounts for normal testing rather than reuse credentials outside the lab.
+The seeded classroom accounts share the password `C1sc0123`. Students should
+create separate accounts for normal testing rather than reuse credentials
+outside the lab.
 
 ## Run the Application
 
@@ -205,19 +229,61 @@ The root command starts:
 - Frontend: `http://localhost:3000`
 - Backend: `http://localhost:8000`
 
+The startup banner prints every address the app is reachable on, for example:
+
+```text
+  on this machine:  http://localhost:3000
+  on WIFI:  http://192.168.1.3:3000
+  api:              http://192.168.1.3:8000
+  seeded login:     any seeded username, password C1sc0123
+```
+
+If port 3000 or 8000 is already taken, the launcher automatically moves to the
+next free port and prints the URLs it actually used. Override the defaults with
+`FRONTEND_PORT` and `BACKEND_PORT` if needed.
+
 Stop both development servers with `Ctrl+C`.
 
 Individual services can also be started separately:
 
 ```powershell
-cd backend
-npm run server
+npm run backend
 ```
 
 ```powershell
-cd frontend
+npm run frontend
+```
+
+## Accessing from Other Devices on the Same Wi-Fi
+
+The launcher binds the frontend to `0.0.0.0` and points the frontend at your
+LAN address, so other devices on the same network can open the app directly
+using the `on <ADAPTER>` URL from the banner.
+
+If the machine has several adapters, `scripts/start.js` ignores virtual ones
+(VMware, VirtualBox, Hyper-V) and uses the first real private IPv4 address. Set
+`BACKEND_URL_OVERRIDE` to pin a specific address:
+
+```powershell
+$env:BACKEND_URL_OVERRIDE = "http://192.168.1.3:8000"
 npm start
 ```
+
+If a device cannot connect at all, Windows Defender is usually blocking inbound
+Node traffic. Allow Node.js on private networks, and keep in mind that a guest
+Wi-Fi network may isolate clients from each other by design.
+
+## Quick Start (full workflow)
+
+```powershell
+git clone https://github.com/Tsuyoiman/Facebook-and-Osint-Lab.git
+cd Facebook-and-Osint-Lab
+npm run install:all
+npm start
+```
+
+Then open the printed frontend URL and log in with any seeded username using
+the password `C1sc0123`.
 
 ## Implemented Website Features
 
@@ -271,6 +337,42 @@ Following creates a `follow` notification. Confirming a request creates a
 `friend_accepted` notification for the original sender. Opening the panel
 marks notifications read. Confirming or deleting a friend request removes
 that request notification after the action succeeds.
+
+## Relationships and Privacy
+
+All relationship and visibility rules live in one place,
+`backend/helpers/relationships.js`. Controllers call it, and components never
+re-derive the rules themselves:
+
+```text
+isFriend(a, b)                 friendship only when BOTH sides accepted
+hasPendingRequest(from, to)    an unanswered outgoing request
+getFriendshipState(viewer, target)   full button state for a profile
+canViewPost(viewer, author, privacy)  post visibility
+canViewProfileContent(...)     locked-profile content visibility
+sendFriendRequest / acceptFriendRequest / declineFriendRequest
+cancelFriendRequest / removeFriend
+```
+
+Rules enforced:
+
+- A request cannot be sent to yourself, duplicated, or sent when already friends.
+- Friendship is written to both users' `friends` arrays on accept.
+- A sent-but-unaccepted request is **not** friendship and grants no access.
+- A post has `privacy: "public" | "friends"`. The author always sees their own
+  post; a `friends` post is visible only to accepted friends.
+- A locked profile shows non-friends the name, picture, and header, but hides
+  posts and the friend list until they are accepted as a friend.
+
+Authenticated routes for these rules:
+
+```text
+GET /suggestUsers          users the viewer is not friends with
+GET /getFriendship/:id     authoritative relationship state for one user
+PUT /addFriend/:id         PUT /cancelRequest/:id
+PUT /acceptRequest/:id     PUT /deleteRequest/:id
+PUT /unfriend/:id          PUT /toggleProfileLock
+```
 
 ## OSINT Reconnaissance Laboratory
 

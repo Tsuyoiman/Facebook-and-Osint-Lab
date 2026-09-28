@@ -40,12 +40,12 @@ export default function EmojiPickerBackground({
   ];
   const backgroundHanlder = (i) => {
     bgRef.current.style.backgroundImage = `url(${postBackgrounds[i]})`;
-    setBackground(postBackgrounds[i]);
+    setBg(postBackgrounds[i]);
     bgRef.current.classList.add("bgHandler");
   };
   const removeBackground = (i) => {
     bgRef.current.style.backgroundImage = "";
-    setBackground("");
+    setBg("");
     bgRef.current.classList.remove("bgHandler");
   };
   const sm = useMediaQuery({

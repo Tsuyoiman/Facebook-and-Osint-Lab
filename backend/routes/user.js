@@ -22,6 +22,8 @@ const {
   deleteRequest,
   searchPublicUsers,
   getPublicProfile,
+  getFriendship,
+  suggestUsers,
   toggleProfileLock,
   toggleDarkMode,
 } = require("../controllers/user");
@@ -36,10 +38,12 @@ router.post("/sendVerification", authUser, sendVerification);
 router.post("/findUser", findUser);
 router.get("/searchUsers", searchPublicUsers);
 router.get("/publicProfile/:username", getPublicProfile);
+router.get("/suggestUsers", authUser, suggestUsers);
 router.post("/sendResetPasswordCode", sendResetPasswordCode);
 router.post("/validateResetCode", validateResetCode);
 router.post("/changePassword", changePassword);
 router.get("/getProfile/:username", authUser, getProfile);
+router.get("/getFriendship/:id", authUser, getFriendship);
 router.put("/updateProfilePicture", authUser, updateProfilePicture);
 router.put("/updateCover", authUser, updateCover);
 router.put("/updateDetails", authUser, updateDetails);

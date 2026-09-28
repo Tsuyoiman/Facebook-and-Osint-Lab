@@ -24,18 +24,25 @@ exports.uploadImages = async (req, res) => {
 };
 exports.listImages = async (req, res) => {
   const { path, sort, max } = req.body;
-
-  cloudinary.v2.search
-    .expression(`${path}`)
-    .sort_by("created_at", `${sort}`)
-    .max_results(max)
-    .execute()
-    .then((result) => {
-      res.json(result);
-    })
-    .catch((err) => {
-      console.log(err.error.message);
-    });
+  if (!cloudinary.config().cloud_name) {
+    // Without credentials the SDK never settles and never answers, which used
+    // to leave the profile page waiting forever. Fail fast with an empty set.
+    return res.json({ resources: [], total_count: 0 });
+  }
+  try {
+    const result = await cloudinary.v2.search
+      .expression(`${path}`)
+      .sort_by("created_at", `${sort}`)
+      .max_results(max)
+      .execute();
+    return res.json(result);
+  } catch (err) {
+    console.log(
+      "listImages error:",
+      err.error ? err.error.message : err.message
+    );
+    return res.json({ resources: [], total_count: 0 });
+  }
 };
 
 const uploadToCloudinary = async (file, path) => {

@@ -189,6 +189,35 @@ const profiles = [
   },
 ];
 
+// Every fictional user reuses an image that is actually committed under
+// frontend/public. The previous seed pointed at /images/<username>.jpg and
+// /images/<username>_cover.jpg, which do not exist, so every avatar and cover
+// was a 404.
+const PROFILE_PICTURES = [
+  "/stories/profile1.jpg",
+  "/stories/profile2.jpg",
+  "/stories/profile3.png",
+  "/stories/profile4.jfif",
+  "/stories/profile5.png",
+  "/images/default_pic.png",
+];
+const COVERS = Array.from(
+  { length: 10 },
+  (_, i) => `/images/postBackgrounds/${i + 1}.jpg`
+);
+
+// A few accounts are locked, and a mix of public and friends-only posts exists
+// so the privacy rules are observable without changing any data by hand.
+const LOCKED_PROFILES = new Set(["jp_enrile", "sarah_duterre", "florence_pugh"]);
+const FRIENDS_ONLY_POSTS = new Set([
+  "marty_romualdo",
+  "zed_co",
+  "jp_enrile",
+  "bingo_revilla",
+  "sarah_duterre",
+  "florence_pugh",
+]);
+
 
 async function seed() {
   await mongoose.connect(process.env.DATABASE_URL);
@@ -198,13 +227,14 @@ async function seed() {
   await Post.deleteMany({ user: { $in: existingIds } });
   await User.deleteMany({ _id: { $in: existingIds } });
 
-  const users = await User.insertMany(profiles.map(({ post, ...profile }) => ({
+  const users = await User.insertMany(profiles.map(({ post, ...profile }, index) => ({
     ...profile,
     email: `${profile.username}@rivantech.com`,
     password: passwordHash,
     verified: true,
-    picture: `/images/${profile.username}.jpg`,
-    cover: `/images/${profile.username}_cover.jpg`,
+    picture: PROFILE_PICTURES[index % PROFILE_PICTURES.length],
+    cover: COVERS[index % COVERS.length],
+    profileLocked: LOCKED_PROFILES.has(profile.username),
     friends: [],
     following: [],
     followers: [],
@@ -229,11 +259,40 @@ async function seed() {
     ["florence_pugh", "sydney_sweeney"], ["sydney_sweeney", "scarlett_johansson"],
     ["scarlett_johansson", "megan_fox"],
   ];
+  // Guard against a typo in `links` silently dropping a friendship edge.
+  for (const [left, right] of links) {
+    if (!byUsername[left] || !byUsername[right]) {
+      throw new Error(
+        `Seed link references unknown user: ${!byUsername[left] ? left : right}`
+      );
+    }
+  }
   for (const [left, right] of links) {
     await User.updateOne({ _id: byUsername[left]._id }, { $addToSet: { friends: byUsername[right]._id } });
     await User.updateOne({ _id: byUsername[right]._id }, { $addToSet: { friends: byUsername[left]._id } });
   }
-  await Post.insertMany(profiles.map(({ post, username }) => ({ text: post, user: byUsername[username]._id, type: null, images: [], comments: [] })));
+
+  // Some users get a second, friends-only post so the privacy rules have
+  // something to hide before a request is accepted.
+  const posts = profiles.map(({ post, username }) => ({
+    text: post,
+    user: byUsername[username]._id,
+    type: null,
+    images: [],
+    privacy: FRIENDS_ONLY_POSTS.has(username) ? "friends" : "public",
+    comments: [],
+  }));
+  const extraPosts = [...FRIENDS_ONLY_POSTS]
+    .filter((username) => byUsername[username])
+    .map((username) => ({
+      text: "Friends-only note: this classroom update is only visible to accepted friends.",
+      user: byUsername[username]._id,
+      type: null,
+      images: [],
+      privacy: "friends",
+      comments: [],
+    }));
+  await Post.insertMany([...posts, ...extraPosts]);
   console.log(`Seeded ${users.length} fictional classroom users.`);
   console.log(`Shared password for the seeded accounts: ${password}`);
   await mongoose.disconnect();

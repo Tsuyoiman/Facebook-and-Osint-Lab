@@ -10,11 +10,21 @@ import {
   unfollow,
   unfriend,
 } from "../../functions/user";
+
+const emptyState = {
+  friends: false,
+  following: false,
+  requestSent: false,
+  requestReceived: false,
+};
+
+// The server owns the relationship state. Every action here re-reads the
+// authoritative profile instead of only flipping local booleans, so a rejected
+// request or a failed write can never leave the button lying.
 export default function Friendship({ friendshipp, profileid }) {
-  const [friendship, setFriendship] = useState(friendshipp);
-  useEffect(() => {
-    setFriendship(friendshipp);
-  }, [friendshipp]);
+  const [friendship, setFriendship] = useState(friendshipp || emptyState);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const [friendsMenu, setFriendsMenu] = useState(false);
   const [respondMenu, setRespondMenu] = useState(false);
   const menu = useRef(null);
@@ -22,52 +32,49 @@ export default function Friendship({ friendshipp, profileid }) {
   useClickOutside(menu, () => setFriendsMenu(false));
   useClickOutside(menu1, () => setRespondMenu(false));
   const { user } = useSelector((state) => ({ ...state }));
-  const addFriendHandler = async () => {
-    setFriendship({ ...friendship, requestSent: true, following: true });
-    await addFriend(profileid, user.token);
+
+  useEffect(() => {
+    setFriendship(friendshipp || emptyState);
+  }, [friendshipp]);
+
+  const refresh = async () => {
+    if (!profileid || !user?.token) return;
+    try {
+      const response = await fetch(
+        `${process.env.REACT_APP_BACKEND_URL}/getFriendship/${profileid}`,
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+      if (!response.ok) return;
+      const data = await response.json();
+      if (data && typeof data.friends === "boolean") setFriendship(data);
+    } catch (refreshError) {
+      console.warn("Could not refresh friendship state", refreshError);
+    }
   };
-  const cancelRequestHandler = async () => {
-    setFriendship({ ...friendship, requestSent: false, following: false });
-    await cancelRequest(profileid, user.token);
+
+  const run = async (action) => {
+    setBusy(true);
+    setError("");
+    const result = await action();
+    if (result !== "ok") {
+      setError(result || "Something went wrong");
+    }
+    // Re-sync with the server so the button always reflects real state,
+    // whether the write succeeded or was rejected.
+    await refresh();
+    setBusy(false);
   };
-  const followHandler = async () => {
-    setFriendship({ ...friendship, following: true });
-    await follow(profileid, user.token);
-  };
-  const unfollowHandler = async () => {
-    setFriendship({ ...friendship, following: false });
-    await unfollow(profileid, user.token);
-  };
-  const acceptRequestHanlder = async () => {
-    setFriendship({
-      ...friendship,
-      friends: true,
-      following: true,
-      requestSent: false,
-      requestReceived: false,
-    });
-    await acceptRequest(profileid, user.token);
-  };
-  const unfriendHandler = async () => {
-    setFriendship({
-      ...friendship,
-      friends: false,
-      following: false,
-      requestSent: false,
-      requestReceived: false,
-    });
-    await unfriend(profileid, user.token);
-  };
-  const deleteRequestHanlder = async () => {
-    setFriendship({
-      ...friendship,
-      friends: false,
-      following: false,
-      requestSent: false,
-      requestReceived: false,
-    });
-    await deleteRequest(profileid, user.token);
-  };
+
+  const addFriendHandler = () => run(() => addFriend(profileid, user.token));
+  const cancelRequestHandler = () =>
+    run(() => cancelRequest(profileid, user.token));
+  const followHandler = () => run(() => follow(profileid, user.token));
+  const unfollowHandler = () => run(() => unfollow(profileid, user.token));
+  const acceptRequestHandler = () =>
+    run(() => acceptRequest(profileid, user.token));
+  const unfriendHandler = () => run(() => unfriend(profileid, user.token));
+  const deleteRequestHandler = () =>
+    run(() => deleteRequest(profileid, user.token));
 
   return (
     <div className="friendship">
@@ -90,7 +97,7 @@ export default function Friendship({ friendshipp, profileid }) {
               {friendship?.following ? (
                 <div
                   className="open_cover_menu_item hover1"
-                  onClick={() => unfollowHandler()}
+                  onClick={unfollowHandler}
                 >
                   <img src="../../../icons/unfollowOutlined.png" alt="" />
                   Unfollow
@@ -98,7 +105,7 @@ export default function Friendship({ friendshipp, profileid }) {
               ) : (
                 <div
                   className="open_cover_menu_item hover1"
-                  onClick={() => followHandler()}
+                  onClick={followHandler}
                 >
                   <img src="../../../icons/unfollowOutlined.png" alt="" />
                   Follow
@@ -106,7 +113,7 @@ export default function Friendship({ friendshipp, profileid }) {
               )}
               <div
                 className="open_cover_menu_item hover1"
-                onClick={() => unfriendHandler()}
+                onClick={unfriendHandler}
               >
                 <i className="unfriend_outlined_icon"></i>
                 Unfriend
@@ -117,14 +124,22 @@ export default function Friendship({ friendshipp, profileid }) {
       ) : (
         !friendship?.requestSent &&
         !friendship?.requestReceived && (
-          <button className="blue_btn" onClick={() => addFriendHandler()}>
+          <button
+            className="blue_btn"
+            disabled={busy}
+            onClick={addFriendHandler}
+          >
             <img src="../../../icons/addFriend.png" alt="" className="invert" />
-            <span>Add Friend</span>
+            <span>{busy ? "Sending..." : "Add Friend"}</span>
           </button>
         )
       )}
       {friendship?.requestSent ? (
-        <button className="blue_btn" onClick={() => cancelRequestHandler()}>
+        <button
+          className="blue_btn"
+          disabled={busy}
+          onClick={cancelRequestHandler}
+        >
           <img
             src="../../../icons/cancelRequest.png"
             className="invert"
@@ -143,13 +158,13 @@ export default function Friendship({ friendshipp, profileid }) {
               <div className="open_cover_menu" ref={menu1}>
                 <div
                   className="open_cover_menu_item hover1"
-                  onClick={() => acceptRequestHanlder()}
+                  onClick={acceptRequestHandler}
                 >
                   Confirm
                 </div>
                 <div
                   className="open_cover_menu_item hover1"
-                  onClick={() => deleteRequestHanlder()}
+                  onClick={deleteRequestHandler}
                 >
                   Delete
                 </div>
@@ -158,14 +173,15 @@ export default function Friendship({ friendshipp, profileid }) {
           </div>
         )
       )}
+      {error && <div className="friendship_error">{error}</div>}
       <div className="flex">
         {friendship?.following ? (
-          <button className="gray_btn" onClick={() => unfollowHandler()}>
+          <button className="gray_btn" onClick={unfollowHandler}>
             <img src="../../../icons/follow.png" alt="" />
             <span>Following</span>
           </button>
         ) : (
-          <button className="blue_btn" onClick={() => followHandler()}>
+          <button className="blue_btn" onClick={followHandler}>
             <img src="../../../icons/follow.png" className="invert" alt="" />
             <span>Follow</span>
           </button>

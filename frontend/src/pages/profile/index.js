@@ -22,7 +22,7 @@ export default function Profile({ setVisible }) {
   const { username } = useParams();
   const navigate = useNavigate();
   const { user } = useSelector((state) => ({ ...state }));
-  const [photos, setPhotos] = useState({});
+  const [photos, setPhotos] = useState({ resources: [], total_count: 0 });
   var userName = username === undefined ? user.username : username;
   const [{ loading, error, profile }, dispatch] = useReducer(profileReducer, {
     loading: false,
@@ -37,42 +37,49 @@ export default function Profile({ setVisible }) {
   }, [profile]);
   var visitor = userName === user.username ? false : true;
   const [othername, setOthername] = useState();
-  const path = `${userName}/*`;
   const max = 30;
   const sort = "desc";
+
+  // Cloudinary image listing is optional. It must never gate the profile
+  // itself, otherwise a slow or unreachable image service leaves the page
+  // stuck loading and the profile looks broken.
+  const loadPhotos = async (name) => {
+    try {
+      const images = await axios.post(
+        `${process.env.REACT_APP_BACKEND_URL}/listImages`,
+        { path: `${name}/*`, sort, max },
+        {
+          headers: { Authorization: `Bearer ${user.token}` },
+          timeout: 10000,
+        }
+      );
+      const payload = images?.data;
+      setPhotos(
+        payload && Array.isArray(payload.resources)
+          ? payload
+          : { resources: [], total_count: 0 }
+      );
+    } catch (imgError) {
+      console.warn("Image list unavailable, continuing without photos:", imgError?.message);
+      setPhotos({ resources: [], total_count: 0 });
+    }
+  };
+
   const getProfile = async () => {
     try {
-      dispatch({
-        type: "PROFILE_REQUEST",
-      });
+      dispatch({ type: "PROFILE_REQUEST" });
       const { data } = await axios.get(
         `${process.env.REACT_APP_BACKEND_URL}/getProfile/${userName}`,
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
       if (data.ok === false) {
         navigate("/profile");
-      } else {
-        try {
-          const images = await axios.post(
-            `${process.env.REACT_APP_BACKEND_URL}/listImages`,
-            { path, sort, max },
-            {
-              headers: {
-                Authorization: `Bearer ${user.token}`,
-              },
-            }
-          );
-          setPhotos(images.data);
-        } catch (imgError) {
-          console.log("Image list failed:", imgError);
-          setPhotos([]);
-        }
-        dispatch({
-          type: "PROFILE_SUCCESS",
-          payload: data,
-        });
+        return;
       }
+      dispatch({ type: "PROFILE_SUCCESS", payload: data });
+      loadPhotos(userName);
     } catch (error) {
+      console.error("Failed to load profile", userName, error);
       dispatch({
         type: "PROFILE_ERROR",
         payload: error.response?.data?.message || "Error loading profile",
@@ -84,9 +91,9 @@ export default function Profile({ setVisible }) {
   const [height, setHeight] = useState();
   const [leftHeight, setLeftHeight] = useState();
   const [scrollHeight, setScrollHeight] = useState();
-useEffect(() => {
-    setHeight(profileTop.current.clientHeight + 300);
-    setLeftHeight(leftSide.current.clientHeight);
+ useEffect(() => {
+    if (profileTop.current) setHeight(profileTop.current.clientHeight + 300);
+    if (leftSide.current) setLeftHeight(leftSide.current.clientHeight);
     window.addEventListener("scroll", getScroll, { passive: true });
     return () => {
       window.removeEventListener("scroll", getScroll);
@@ -98,6 +105,17 @@ useEffect(() => {
   const getScroll = () => {
     setScrollHeight(window.pageYOffset);
   };
+
+  // A missing or malformed user must not render a half-built page.
+  if (error) {
+    return (
+      <div className="profile">
+        <Header page="profile" />
+        <div className="no_posts">{error}</div>
+      </div>
+    );
+  }
+
 
   return (
     <div className="profile">
@@ -121,8 +139,7 @@ useEffect(() => {
       <div className="profile_bottom">
         <div className="profile_container">
           <div className="bottom_container">
-            <PplYouMayKnow />
-            <div
+            <PplYouMayKnow />            <div
               className={`profile_grid ${
                 check && scrollHeight >= height && leftHeight > 1000
                   ? "scrollFixed showLess"

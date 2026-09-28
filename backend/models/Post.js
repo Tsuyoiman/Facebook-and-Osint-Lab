@@ -20,6 +20,11 @@ const postSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    privacy: {
+      type: String,
+      enum: ["public", "friends"],
+      default: "public",
+    },
     background: {
       type: String,
     },

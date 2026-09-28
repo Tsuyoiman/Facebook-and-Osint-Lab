@@ -2,9 +2,12 @@
   "name": "facebook-osint-lab",
   "private": true,
   "scripts": {
-    "start": "concurrently --kill-others-on-fail -n backend,frontend -c blue,green \"node backend/start.js\" \"npm --prefix frontend start\""
-  },
-  "devDependencies": {
-    "concurrently": "^9.2.1"
+    "install:all": "node scripts/setup.js",
+    "setup": "node scripts/setup.js",
+    "start": "node scripts/start.js",
+    "dev": "node scripts/start.js",
+    "all": "node scripts/start.js",
+    "backend": "node backend/start.js",
+    "frontend": "npm --prefix frontend start"
   }
 }

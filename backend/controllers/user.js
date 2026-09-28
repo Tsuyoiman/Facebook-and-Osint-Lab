@@ -7,11 +7,23 @@ const { generateToken } = require("../helpers/tokens");
 const User = require("../models/User");
 const Code = require("../models/Code");
 const Post = require("../models/Post");
-jwt = require("jsonwebtoken");
+const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const { sendVerificationEmail, sendResetCode } = require("../helpers/mailer");
 const generateCode = require("../helpers/generateCode");
 const { createNotification } = require("../helpers/notifications");
+const {
+  isFriend,
+  getFriendshipState,
+  canViewPostWith,
+  canViewProfileContent,
+  sendFriendRequest,
+  acceptFriendRequest,
+  declineFriendRequest,
+  cancelFriendRequest,
+  removeFriend,
+  idOf,
+} = require("../helpers/relationships");
 
 exports.register = async (req, res) => {
   try {
@@ -193,7 +205,7 @@ exports.findUser = async (req, res) => {
 };
 
 const publicUserFields =
-  "first_name last_name username picture cover gender details simulation friends following followers";
+  "first_name last_name username picture cover gender details simulation friends following followers profileLocked";
 
 const publicUser = (user) => ({
   _id: user._id,
@@ -205,6 +217,7 @@ const publicUser = (user) => ({
   gender: user.gender,
   details: user.details,
   simulation: user.simulation,
+  profileLocked: user.profileLocked === true,
 });
 
 const publicPost = (post) => ({
@@ -213,8 +226,9 @@ const publicPost = (post) => ({
   images: post.images,
   background: post.background,
   type: post.type,
+  privacy: post.privacy || "public",
   createdAt: post.createdAt,
-  user: publicUser(post.user),
+  user: post.user ? publicUser(post.user) : null,
   comments: (post.comments || []).map((comment) => ({
     comment: comment.comment,
     image: comment.image,
@@ -249,31 +263,43 @@ exports.getPublicProfile = async (req, res) => {
       .lean();
     if (!profile) return res.status(404).json({ message: "Profile not found" });
 
-    const isLocked = profile.profileLocked === true;
-    let isFriend = false;
-    if (req.user && req.user.id) {
-      const me = await User.findById(req.user.id).select("friends").lean();
-      isFriend = (me?.friends || []).some(
-        (f) => f.toString() === profile._id.toString()
-      );
-    }
-    const canViewPosts = !isLocked || isFriend;
+    const isOwner = req.user && idOf(req.user.id) === idOf(profile._id);
+    const isFriend =
+      req.user && req.user.id ? await isFriend(req.user.id, profile._id) : false;
+    const profileLocked = profile.profileLocked === true;
+    const canViewContent = canViewProfileContent({
+      isOwner,
+      isFriend,
+      profileLocked,
+    });
+
     let posts = [];
-    if (canViewPosts) {
-      posts = await Post.find({ user: profile._id })
-        .select("text images background type createdAt comments user")
+    if (canViewContent) {
+      const allPosts = await Post.find({ user: profile._id })
+        .select("text images background type privacy createdAt comments user")
         .populate("user", publicUserFields)
         .populate("comments.commentBy", "first_name last_name username picture")
         .sort({ createdAt: -1 })
         .limit(30)
         .lean();
+      const friendIds = req.user && req.user.id ? await getFriendIds(req.user.id) : [];
+      posts = allPosts.filter((post) =>
+        canViewPostWith(
+          req.user?.id,
+          idOf(post.user ? post.user._id : post.user),
+          post.privacy,
+          friendIds
+        )
+      );
     }
 
     res.json({
       ...publicUser(profile),
-      friends: profile.friends || [],
+      friends: canViewContent ? profile.friends || [] : [],
       posts: posts.map(publicPost),
-      canViewPosts,
+      profileLocked,
+      canViewPosts: canViewContent,
+      isOwner,
       friendship: {
         friends: isFriend,
         following: false,
@@ -281,6 +307,55 @@ exports.getPublicProfile = async (req, res) => {
         requestReceived: false,
       },
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getFriendIds = async (userId) => {
+  const me = await User.findById(userId).select("friends").lean();
+  return (me?.friends || []).map(idOf);
+};
+
+/**
+ * Authoritative relationship state for one target user, used by the profile
+ * page to re-sync its buttons after an action.
+ */
+exports.getFriendship = async (req, res) => {
+  try {
+    const friendship = await getFriendshipState(req.user.id, req.params.id);
+    return res.json(friendship);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * People the viewer is not already friends with, for the "People you may know"
+ * panel. Replaces the previously hardcoded client-side list.
+ */
+exports.suggestUsers = async (req, res) => {
+  try {
+    const viewerId = req.user && req.user.id;
+    if (!viewerId) return res.json([]);
+    const viewer = await User.findById(viewerId)
+      .select("friends following requests")
+      .lean();
+    if (!viewer) return res.json([]);
+
+    const excluded = [
+      idOf(viewer._id),
+      ...(viewer.friends || []).map(idOf),
+      ...(viewer.following || []).map(idOf),
+      ...(viewer.requests || []).map(idOf),
+    ];
+    // Anyone who already asked the viewer is a pending request, not a suggestion.
+    const users = await User.find({ _id: { $nin: excluded } })
+      .select("first_name last_name username picture simulation")
+      .limit(6)
+      .lean();
+
+    res.json(users.map((user) => publicUser(user)));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -337,45 +412,62 @@ exports.changePassword = async (req, res) => {
 exports.getProfile = async (req, res) => {
   try {
     const { username } = req.params;
-    const user = await User.findById(req.user.id);
+    const viewer = await User.findById(req.user.id).select(
+      "friends following requests"
+    );
+    if (!viewer) {
+      return res.status(404).json({ message: "Session user not found" });
+    }
     const profile = await User.findOne({ username }).select("-password");
-    const friendship = {
-      friends: false,
-      following: false,
-      requestSent: false,
-      requestReceived: false,
-    };
     if (!profile) {
       return res.json({ ok: false });
     }
-    if (
-      user.friends.includes(profile._id) &&
-      profile.friends.includes(user._id)
-    ) {
-      friendship.friends = true;
-    }
-    if (user.following.includes(profile._id)) {
-      friendship.following = true;
-    }
-    if (user.requests.includes(profile._id)) {
-      friendship.requestReceived = true;
-    }
-    if (profile.requests.includes(user._id)) {
-      friendship.requestSent = true;
-    }
-    const isLocked = profile.profileLocked === true;
-    const isFriend = friendship.friends;
-    const canViewPosts = !isLocked || isFriend || (user._id.toString() === profile._id.toString());
 
+    const friendship = await getFriendshipState(viewer._id, profile._id);
+    const isOwner = idOf(viewer._id) === idOf(profile._id);
+    const profileLocked = profile.profileLocked === true;
+    const canViewContent = canViewProfileContent({
+      isOwner,
+      isFriend: friendship.friends,
+      profileLocked,
+    });
+
+    // Locked profiles hide restricted content from non-friends, but the
+    // basic public header (name, picture, friend count) is still returned.
     let posts = [];
-    if (canViewPosts) {
-      posts = await Post.find({ user: profile._id })
+    if (canViewContent) {
+      const allPosts = await Post.find({ user: profile._id })
         .populate("user", publicUserFields)
         .populate("comments.commentBy", "first_name last_name username picture")
         .sort({ createdAt: -1 });
+      // Per-post privacy still applies even inside an unlocked profile.
+      posts = allPosts.filter((post) =>
+        canViewPostWith(
+          viewer._id,
+          idOf(post.user ? post.user._id : post.user),
+          post.privacy,
+          viewer.friends
+        )
+      );
     }
-    await profile.populate("friends", "first_name last_name username picture");
-    res.json({ ...profile.toObject(), posts, friendship, canViewPosts });
+
+    let friends = [];
+    if (friendship.friends || canViewContent) {
+      await profile.populate("friends", "first_name last_name username picture");
+      friends = profile.friends || [];
+    }
+
+    const base = profile.toObject();
+    delete base.password;
+    return res.json({
+      ...base,
+      friends,
+      posts,
+      friendship,
+      profileLocked,
+      canViewPosts: canViewContent,
+      isOwner,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -425,63 +517,21 @@ exports.updateDetails = async (req, res) => {
 };
 exports.addFriend = async (req, res) => {
   try {
-    if (req.user.id !== req.params.id) {
-      const sender = await User.findById(req.user.id);
-      const receiver = await User.findById(req.params.id);
-      if (
-        !receiver.requests.includes(sender._id) &&
-        !receiver.friends.includes(sender._id)
-      ) {
-        await receiver.updateOne({
-          $push: { requests: sender._id },
-        });
-        await receiver.updateOne({
-          $push: { followers: sender._id },
-        });
-        await sender.updateOne({
-          $push: { following: receiver._id },
-        });
-        await createNotification(receiver._id, sender._id, "friend_request");
-        res.json({ message: "Friend request has been sent" });
-      } else {
-        return res.status(400).json({ message: "Friend request already sent" });
-      }
-    } else {
-      return res
-        .status(400)
-        .json({ message: "You can't send a friend request to yourself" });
-    }
+    const result = await sendFriendRequest(req.user.id, req.params.id);
+    return res.status(result.ok ? 200 : 400).json({
+      message: result.message,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 exports.cancelRequest = async (req, res) => {
   try {
-    if (req.user.id !== req.params.id) {
-      const sender = await User.findById(req.user.id);
-      const receiver = await User.findById(req.params.id);
-      if (
-        receiver.requests.includes(sender._id) &&
-        !receiver.friends.includes(sender._id)
-      ) {
-        await receiver.updateOne({
-          $pull: { requests: sender._id },
-        });
-        await receiver.updateOne({
-          $pull: { followers: sender._id },
-        });
-        await sender.updateOne({
-          $pull: { following: receiver._id },
-        });
-        res.json({ message: "Friend request cancelled" });
-      } else {
-        return res.status(400).json({ message: "Friend request already sent" });
-      }
-    } else {
-      return res
-        .status(400)
-        .json({ message: "You can't cancel a friend request to yourself" });
-    }
+    const result = await cancelFriendRequest(req.user.id, req.params.id);
+    return res.status(result.ok ? 200 : 400).json({
+      message: result.message,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -491,26 +541,23 @@ exports.follow = async (req, res) => {
     if (req.user.id !== req.params.id) {
       const sender = await User.findById(req.user.id);
       const receiver = await User.findById(req.params.id);
-      if (
-        !receiver.followers.includes(sender._id) &&
-        !sender.following.includes(receiver._id)
-      ) {
-        await receiver.updateOne({
-          $push: { followers: sender._id },
-        });
-
-        await sender.updateOne({
-          $push: { following: receiver._id },
-        });
-        await createNotification(receiver._id, sender._id, "follow");
-        res.json({ message: "Follow success" });
-      } else {
+      if (!sender || !receiver) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const alreadyFollowing = (sender.following || []).some(
+        (f) => idOf(f) === idOf(receiver._id)
+      );
+      if (alreadyFollowing) {
         return res.status(400).json({ message: "Already following" });
       }
+      await receiver.updateOne({ $addToSet: { followers: sender._id } });
+      await sender.updateOne({ $addToSet: { following: receiver._id } });
+      await createNotification(receiver._id, sender._id, "follow");
+      return res.json({ message: "Follow success" });
     } else {
       return res
         .status(400)
-        .json({ message: "You can't cancel follow yourself" });
+        .json({ message: "You can't follow yourself" });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -521,25 +568,22 @@ exports.unfollow = async (req, res) => {
     if (req.user.id !== req.params.id) {
       const sender = await User.findById(req.user.id);
       const receiver = await User.findById(req.params.id);
-      if (
-        receiver.followers.includes(sender._id) &&
-        sender.following.includes(receiver._id)
-      ) {
-        await receiver.updateOne({
-          $pull: { followers: sender._id },
-        });
-
-        await sender.updateOne({
-          $pull: { following: receiver._id },
-        });
-        res.json({ message: "Unfollow success" });
-      } else {
+      if (!sender || !receiver) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const isFollowing = (sender.following || []).some(
+        (f) => idOf(f) === idOf(receiver._id)
+      );
+      if (!isFollowing) {
         return res.status(400).json({ message: "Already not following" });
       }
+      await receiver.updateOne({ $pull: { followers: sender._id } });
+      await sender.updateOne({ $pull: { following: receiver._id } });
+      return res.json({ message: "Unfollow success" });
     } else {
       return res
         .status(400)
-        .json({ message: "You can't cancel unfollow yourself" });
+        .json({ message: "You can't unfollow yourself" });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -547,97 +591,32 @@ exports.unfollow = async (req, res) => {
 };
 exports.acceptRequest = async (req, res) => {
   try {
-    if (req.user.id !== req.params.id) {
-      const receiver = await User.findById(req.user.id);
-      const sender = await User.findById(req.params.id);
-      if (receiver.requests.includes(sender._id)) {
-        await receiver.update({
-          $push: { friends: sender._id, following: sender._id },
-        });
-        await sender.update({
-          $push: { friends: receiver._id, followers: receiver._id },
-        });
-        await receiver.updateOne({
-          $pull: { requests: sender._id },
-        });
-        await createNotification(sender._id, receiver._id, "friend_accepted");
-        res.json({ message: "friend request accepted" });
-      } else {
-        return res.status(400).json({ message: "Already friends" });
-      }
-    } else {
-      return res
-        .status(400)
-        .json({ message: "You can't accept a request from  yourself" });
-    }
+    const result = await acceptFriendRequest(req.user.id, req.params.id);
+    return res.status(result.ok ? 200 : 400).json({
+      message: result.message,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-exports.unfriend = async (req, res) => {
-  try {
-    if (req.user.id !== req.params.id) {
-      const sender = await User.findById(req.user.id);
-      const receiver = await User.findById(req.params.id);
-      if (
-        receiver.friends.includes(sender._id) &&
-        sender.friends.includes(receiver._id)
-      ) {
-        await receiver.update({
-          $pull: {
-            friends: sender._id,
-            following: sender._id,
-            followers: sender._id,
-          },
-        });
-        await sender.update({
-          $pull: {
-            friends: receiver._id,
-            following: receiver._id,
-            followers: receiver._id,
-          },
-        });
 
-        res.json({ message: "unFriend request accepted" });
-      } else {
-        return res.status(400).json({ message: "Already not friends" });
-      }
-    } else {
-      return res.status(400).json({ message: "You can't unfriend yourself" });
-    }
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
 exports.deleteRequest = async (req, res) => {
   try {
-    if (req.user.id !== req.params.id) {
-      const receiver = await User.findById(req.user.id);
-      const sender = await User.findById(req.params.id);
-      if (receiver.requests.includes(sender._id)) {
-        await receiver.update({
-          $pull: {
-            requests: sender._id,
-            followers: sender._id,
-          },
-        });
-        await sender.update({
-          $pull: {
-            following: receiver._id,
-          },
-        });
+    const result = await declineFriendRequest(req.user.id, req.params.id);
+    return res.status(result.ok ? 200 : 400).json({
+      message: result.message,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
-        res.json({ message: "delete request accepted" });
-      } else {
-        return res
-          .status(400)
-          .json({ message: "Already deleted friend request" });
-      }
-    } else {
-      return res
-        .status(400)
-        .json({ message: "You can't delete a friend request from yourself" });
-    }
+exports.unfriend = async (req, res) => {
+  try {
+    const result = await removeFriend(req.user.id, req.params.id);
+    return res.status(result.ok ? 200 : 400).json({
+      message: result.message,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -646,11 +625,19 @@ exports.deleteRequest = async (req, res) => {
 exports.toggleProfileLock = async (req, res) => {
   try {
     const { locked } = req.body;
+    if (typeof locked !== "boolean") {
+      return res
+        .status(400)
+        .json({ message: "locked must be true or false" });
+    }
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { profileLocked: locked },
       { new: true }
     );
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
     res.json({ profileLocked: user.profileLocked });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -660,11 +647,19 @@ exports.toggleProfileLock = async (req, res) => {
 exports.toggleDarkMode = async (req, res) => {
   try {
     const { darkMode } = req.body;
+    if (typeof darkMode !== "boolean") {
+      return res
+        .status(400)
+        .json({ message: "darkMode must be true or false" });
+    }
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { darkMode: darkMode },
       { new: true }
     );
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
     res.json({ darkMode: user.darkMode });
   } catch (error) {
     res.status(500).json({ message: error.message });

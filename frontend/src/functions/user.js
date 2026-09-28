@@ -14,7 +14,7 @@ export const updateprofilePicture = async (url, token) => {
     );
     return "ok";
   } catch (error) {
-    return error.response.data.message;
+    return error?.response?.data?.message || "Request failed. Please try again.";
   }
 };
 export const updateCover = async (url, token) => {
@@ -32,7 +32,7 @@ export const updateCover = async (url, token) => {
     );
     return "ok";
   } catch (error) {
-    return error.response.data.message;
+    return error?.response?.data?.message || "Request failed. Please try again.";
   }
 };
 export const addFriend = async (id, token) => {
@@ -48,7 +48,7 @@ export const addFriend = async (id, token) => {
     );
     return "ok";
   } catch (error) {
-    return error.response.data.message;
+    return error?.response?.data?.message || "Request failed. Please try again.";
   }
 };
 export const cancelRequest = async (id, token) => {
@@ -65,7 +65,7 @@ export const cancelRequest = async (id, token) => {
     );
     return "ok";
   } catch (error) {
-    return error.response.data.message;
+    return error?.response?.data?.message || "Request failed. Please try again.";
   }
 };
 export const follow = async (id, token) => {
@@ -82,7 +82,7 @@ export const follow = async (id, token) => {
     );
     return "ok";
   } catch (error) {
-    return error.response.data.message;
+    return error?.response?.data?.message || "Request failed. Please try again.";
   }
 };
 export const unfollow = async (id, token) => {
@@ -99,7 +99,7 @@ export const unfollow = async (id, token) => {
     );
     return "ok";
   } catch (error) {
-    return error.response.data.message;
+    return error?.response?.data?.message || "Request failed. Please try again.";
   }
 };
 export const acceptRequest = async (id, token) => {
@@ -116,7 +116,7 @@ export const acceptRequest = async (id, token) => {
     );
     return "ok";
   } catch (error) {
-    return error.response.data.message;
+    return error?.response?.data?.message || "Request failed. Please try again.";
   }
 };
 export const unfriend = async (id, token) => {
@@ -133,7 +133,7 @@ export const unfriend = async (id, token) => {
     );
     return "ok";
   } catch (error) {
-    return error.response.data.message;
+    return error?.response?.data?.message || "Request failed. Please try again.";
   }
 };
 export const deleteRequest = async (id, token) => {
@@ -150,7 +150,7 @@ export const deleteRequest = async (id, token) => {
     );
     return "ok";
   } catch (error) {
-    return error.response.data.message;
+    return error?.response?.data?.message || "Request failed. Please try again.";
   }
 };
 export const toggleDarkMode = async (darkMode, token) => {
@@ -166,7 +166,7 @@ export const toggleDarkMode = async (darkMode, token) => {
     );
     return data.darkMode;
   } catch (error) {
-    return error.response.data.message;
+    return error?.response?.data?.message || "Request failed. Please try again.";
   }
 };
 export const toggleProfileLock = async (locked, token) => {
@@ -182,6 +182,6 @@ export const toggleProfileLock = async (locked, token) => {
     );
     return data.profileLocked;
   } catch (error) {
-    return error.response.data.message;
+    return error?.response?.data?.message || "Request failed. Please try again.";
   }
 };
