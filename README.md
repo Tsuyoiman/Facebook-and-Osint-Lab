@@ -146,6 +146,89 @@ package.json          Root scripts for install and start
 - Optional Cloudinary credentials for image uploads
 - Optional email credentials for verification/reset email delivery
 
+## Start Here: Simple Classroom Setup
+
+This is the quickest way to run the fictional lab on one Windows computer and
+open it from Kali Linux or another computer on the same authorized network.
+
+### 1. Start the lab on the Windows host
+
+Open PowerShell and run:
+
+```powershell
+cd C:\Users\Administrator\Desktop\Facebook\Facebook-and-Osint-Lab
+npm run install:all
+npm run dev
+```
+
+Keep this PowerShell window open. It runs the frontend, backend, and local
+persistent MongoDB database. The first startup may download MongoDB and can
+take several minutes.
+
+The terminal prints the exact addresses to use. For example:
+
+```text
+on this machine:  http://localhost:3001
+on Wi-Fi:        http://10.3.3.171:3001
+api:             http://10.3.3.171:8000
+```
+
+Ports can change when another program is already using `3000` or `8000`.
+Always use the URLs printed by the running terminal.
+
+### 2. Open the website on the Windows host
+
+Open the printed **on this machine** URL in the Windows browser. If the
+frontend is using port `3001`, use:
+
+```text
+http://localhost:3001
+```
+
+Create a classroom account or use a seeded account. Seeded accounts use the
+password `C1sc0123`.
+
+### 3. Open the same website from Kali Linux
+
+Use the Windows host's printed LAN URL, not `localhost`. For example:
+
+```text
+http://10.3.3.171:3001
+```
+
+Kali and Windows must have a reachable network route. In VMware, Bridged mode
+must be attached to the same physical Wi-Fi or Ethernet adapter used by the
+Windows host. Host-only mode can be used for an isolated host-to-Kali lab.
+
+Test the connection from Kali before opening Firefox:
+
+```bash
+curl -i "http://10.3.3.171:3001"
+curl -i "http://10.3.3.171:8000/searchUsers?q=Megan"
+```
+
+The first command should return the React page. The second should return JSON
+from the public search API.
+
+### 4. Disable an unused Firefox proxy
+
+If Firefox reports **Unable to find the proxy server**:
+
+1. Open Firefox **Settings**.
+2. Search for **network**.
+3. Under **Network Settings**, click **Settings...**.
+4. Select **No proxy**, then click **OK**.
+5. Reload the printed LAN URL.
+
+Use a manual proxy only when an authorized proxy tool is running. For this lab,
+**No proxy** is normally required.
+
+### 5. Search classroom profiles
+
+After the website loads, open the search icon and enter at least two
+characters, such as `Megan`. The search accepts fictional first names, last
+names, full names, usernames, and exact registration email addresses.
+
 ## Installation
 
 Clone the repository and enter the project root:
